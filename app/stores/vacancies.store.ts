@@ -2,10 +2,11 @@ import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import { VacanciesService } from '~/services/vacancies.service'
 import type { Vacancy } from '~/types/vacancy.types'
+import { getErrorMessage } from '~/utils/error'
 
 export const useVacanciesStore = defineStore('vacancies', () => {
   const supabase = useSupabaseClient()
-  const service = new VacanciesService(supabase as any)
+  const service = new VacanciesService(supabase)
 
   const vacancies = ref<Vacancy[]>([])
   const currentVacancy = ref<Vacancy | null>(null)
@@ -17,8 +18,8 @@ export const useVacanciesStore = defineStore('vacancies', () => {
     error.value = null
     try {
       vacancies.value = await service.fetchAll()
-    } catch (e: any) {
-      error.value = e.message
+    } catch (e: unknown) {
+      error.value = getErrorMessage(e)
     } finally {
       isLoading.value = false
     }
@@ -29,8 +30,8 @@ export const useVacanciesStore = defineStore('vacancies', () => {
     error.value = null
     try {
       currentVacancy.value = await service.fetchById(id)
-    } catch (e: any) {
-      error.value = e.message
+    } catch (e: unknown) {
+      error.value = getErrorMessage(e)
     } finally {
       isLoading.value = false
     }
@@ -39,8 +40,8 @@ export const useVacanciesStore = defineStore('vacancies', () => {
   const fetchOpen = async () => {
     try {
       return await service.fetchOpen()
-    } catch (e: any) {
-      error.value = e.message
+    } catch (e: unknown) {
+      error.value = getErrorMessage(e)
       return []
     }
   }
@@ -52,8 +53,8 @@ export const useVacanciesStore = defineStore('vacancies', () => {
       const vacancy = await service.create(payload)
       vacancies.value.unshift(vacancy)
       return vacancy
-    } catch (e: any) {
-      error.value = e.message
+    } catch (e: unknown) {
+      error.value = getErrorMessage(e)
       return null
     } finally {
       isLoading.value = false
@@ -69,8 +70,8 @@ export const useVacanciesStore = defineStore('vacancies', () => {
       if (idx !== -1) vacancies.value[idx] = updated
       if (currentVacancy.value?.id === id) currentVacancy.value = updated
       return true
-    } catch (e: any) {
-      error.value = e.message
+    } catch (e: unknown) {
+      error.value = getErrorMessage(e)
       return false
     } finally {
       isLoading.value = false
@@ -86,8 +87,8 @@ export const useVacanciesStore = defineStore('vacancies', () => {
     error.value = null
     try {
       vacancies.value = await service.search(query)
-    } catch (e: any) {
-      error.value = e.message
+    } catch (e: unknown) {
+      error.value = getErrorMessage(e)
     } finally {
       isLoading.value = false
     }

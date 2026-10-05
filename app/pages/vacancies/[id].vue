@@ -52,7 +52,7 @@ import type { Candidate } from '~/types/candidate.types'
 const route = useRoute()
 const vacanciesStore = useVacanciesStore()
 const supabase = useSupabaseClient()
-const candidatesService = new CandidatesService(supabase as any)
+const candidatesService = new CandidatesService(supabase)
 
 const vacancy = computed(() => vacanciesStore.currentVacancy)
 const candidates = ref<Candidate[]>([])

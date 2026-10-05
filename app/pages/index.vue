@@ -1,38 +1,53 @@
 <template lang="pug">
 .page-candidates
   .page-candidates__header
-    h1.page-title Витрина кандидатов
+    .page-candidates__headline
+      h1.page-title Витрина кандидатов
+      p.page-candidates__subtitle Управление базой кандидатов, воронкой найма и статусами
+
     UiButton(variant="primary", @click="showAddModal = true")
       template(#icon)
         Plus(:size="18")
       | Добавить кандидата
-      
-  CandidateSearch(@search="handleSearch")
-  
-  .page-candidates__count(v-if="!candidatesStore.isLoading")
-    | Всего {{ candidatesStore.candidates.length }} кандидатов
-    
+
+  CandidateFilterBar
+
   .page-candidates__loading(v-if="candidatesStore.isLoading")
     .page-candidates__spinner
-    | Загрузка...
-    
-  .page-candidates__empty(v-else-if="candidatesStore.candidates.length === 0")
-    UserX(:size="48")
-    p Кандидаты не найдены
-    p.page-candidates__empty-hint Добавьте нового кандидата или измените параметры поиска
-  
-  .page-candidates__list(v-else)
-    CandidateCard(
-      v-for="candidate in candidatesStore.candidates",
-      :key="candidate.id",
-      :candidate="candidate",
+    | Загрузка кандидатов...
+
+  template(v-else)
+    //- Kanban View
+    CandidateKanbanBoard(
+      v-if="candidatesStore.viewMode === 'kanban'",
       @status-change="openStatusModal"
     )
-    
+
+    //- List View
+    template(v-else)
+      .page-candidates__count
+        | Всего найдено: {{ candidatesStore.totalCount }} кандидатов
+
+      .page-candidates__empty(v-if="candidatesStore.candidates.length === 0")
+        UserX(:size="48")
+        p Кандидаты не найдены
+        p.page-candidates__empty-hint Попробуйте изменить параметры фильтрации или поиска
+
+      .page-candidates__list(v-else)
+        CandidateCard(
+          v-for="candidate in candidatesStore.candidates",
+          :key="candidate.id",
+          :candidate="candidate",
+          @status-change="openStatusModal(candidate)"
+        )
+
+      CandidatePagination
+
   CandidateAddModal(v-model="showAddModal")
   CandidateStatusModal(
     v-model="showStatusModal",
     :candidate="selectedCandidate",
+    :initial-status="selectedTargetStatus",
     @updated="handleStatusUpdated"
   )
 </template>
@@ -41,29 +56,27 @@
 import { ref, onMounted } from 'vue'
 import { Plus, UserX } from 'lucide-vue-next'
 import { useCandidatesStore } from '~/stores/candidates.store'
-import type { Candidate } from '~/types/candidate.types'
+import type { Candidate, CandidateStatus } from '~/types/candidate.types'
 
 const candidatesStore = useCandidatesStore()
 
 const showAddModal = ref(false)
 const showStatusModal = ref(false)
 const selectedCandidate = ref<Candidate | null>(null)
+const selectedTargetStatus = ref<CandidateStatus | null>(null)
 
 onMounted(async () => {
   await candidatesStore.fetchAll()
 })
 
-const handleSearch = async (query: string) => {
-  await candidatesStore.search(query)
-}
-
-const openStatusModal = (candidate: Candidate) => {
+const openStatusModal = (candidate: Candidate, targetStatus?: CandidateStatus) => {
   selectedCandidate.value = candidate
+  selectedTargetStatus.value = targetStatus || null
   showStatusModal.value = true
 }
 
-const handleStatusUpdated = () => {
-  candidatesStore.fetchAll()
+const handleStatusUpdated = async () => {
+  await candidatesStore.fetchWithFilters()
 }
 </script>
 
@@ -74,14 +87,28 @@ const handleStatusUpdated = () => {
     justify-content: space-between;
     align-items: center;
     margin-bottom: var(--spacing-6);
+    flex-wrap: wrap;
+    gap: 16px;
   }
-  
+
+  &__headline {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  &__subtitle {
+    font-size: 13px;
+    color: var(--color-text-secondary);
+  }
+
   &__count {
     font-size: 14px;
+    font-weight: 500;
     color: var(--color-text-secondary);
     margin-bottom: var(--spacing-4);
   }
-  
+
   &__loading {
     display: flex;
     align-items: center;
@@ -90,7 +117,7 @@ const handleStatusUpdated = () => {
     padding: 60px 0;
     color: var(--color-text-secondary);
   }
-  
+
   &__spinner {
     width: 24px;
     height: 24px;
@@ -99,7 +126,7 @@ const handleStatusUpdated = () => {
     border-radius: 50%;
     animation: spin 0.8s linear infinite;
   }
-  
+
   &__empty {
     display: flex;
     flex-direction: column;
@@ -108,13 +135,13 @@ const handleStatusUpdated = () => {
     padding: 80px 0;
     color: var(--color-text-secondary);
     gap: 8px;
-    
+
     &-hint {
       font-size: 14px;
       opacity: 0.7;
     }
   }
-  
+
   &__list {
     display: flex;
     flex-direction: column;
@@ -129,6 +156,8 @@ const handleStatusUpdated = () => {
 }
 
 @keyframes spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 </style>

@@ -84,6 +84,7 @@ import {
 
 const props = defineProps<{
   candidate: Candidate | null
+  initialStatus?: CandidateStatus | string | null
 }>()
 
 const emit = defineEmits<{
@@ -95,7 +96,7 @@ const candidatesStore = useCandidatesStore()
 const orgUnitsStore = useOrgUnitsStore()
 const supabase = useSupabaseClient()
 const user = useSupabaseUser()
-const historyService = new HistoryService(supabase as any)
+const historyService = new HistoryService(supabase)
 
 const selectedStatus = ref('')
 const reason = ref('')
@@ -112,8 +113,10 @@ const currentStatusBgColor = computed(() => currentStatusColor.value + '1a')
 
 const availableStatuses = computed(() => {
   if (!props.candidate) return []
-  const transitions = STATUS_TRANSITIONS[props.candidate.status] || []
-  return transitions.map(s => ({ value: s, label: STATUS_LABELS[s] }))
+  const allKeys = Object.keys(STATUS_LABELS) as CandidateStatus[]
+  return allKeys
+    .filter(s => s !== props.candidate?.status)
+    .map(s => ({ value: s, label: STATUS_LABELS[s] }))
 })
 
 const toSelectOptions = (labels: Record<string, string>) => {
@@ -166,7 +169,7 @@ const handleSave = async () => {
 // Reset on open
 watch(isOpen, (val) => {
   if (val) {
-    selectedStatus.value = ''
+    selectedStatus.value = (props.initialStatus as string) || ''
     reason.value = ''
     comment.value = ''
     nextContactDate.value = ''

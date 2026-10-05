@@ -2,10 +2,11 @@ import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import { TemplatesService } from '~/services/templates.service'
 import type { Template, TemplateType } from '~/types/template.types'
+import { getErrorMessage } from '~/utils/error'
 
 export const useTemplatesStore = defineStore('templates', () => {
   const supabase = useSupabaseClient()
-  const service = new TemplatesService(supabase as any)
+  const service = new TemplatesService(supabase)
 
   const templates = ref<Template[]>([])
   const isLoading = ref(false)
@@ -16,8 +17,8 @@ export const useTemplatesStore = defineStore('templates', () => {
     error.value = null
     try {
       templates.value = await service.fetchByType(type)
-    } catch (e: any) {
-      error.value = e.message
+    } catch (e: unknown) {
+      error.value = getErrorMessage(e)
     } finally {
       isLoading.value = false
     }
@@ -31,8 +32,8 @@ export const useTemplatesStore = defineStore('templates', () => {
       const idx = templates.value.findIndex(t => t.id === id)
       if (idx !== -1) templates.value[idx] = updated
       return true
-    } catch (e: any) {
-      error.value = e.message
+    } catch (e: unknown) {
+      error.value = getErrorMessage(e)
       return false
     } finally {
       isLoading.value = false
@@ -46,8 +47,8 @@ export const useTemplatesStore = defineStore('templates', () => {
       const tmpl = await service.create(payload)
       templates.value.unshift(tmpl)
       return tmpl
-    } catch (e: any) {
-      error.value = e.message
+    } catch (e: unknown) {
+      error.value = getErrorMessage(e)
       return null
     } finally {
       isLoading.value = false
@@ -59,8 +60,8 @@ export const useTemplatesStore = defineStore('templates', () => {
       await service.delete(id)
       templates.value = templates.value.filter(t => t.id !== id)
       return true
-    } catch (e: any) {
-      error.value = e.message
+    } catch (e: unknown) {
+      error.value = getErrorMessage(e)
       return false
     }
   }

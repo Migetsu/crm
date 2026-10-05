@@ -1,8 +1,8 @@
-import type { SupabaseClient } from '@supabase/supabase-js'
+import type { AppSupabaseClient } from './candidates.service'
 import type { HistoryEvent } from '~/types/history.types'
 
 export class HistoryService {
-  constructor(private supabase: SupabaseClient) {}
+  constructor(private supabase: AppSupabaseClient) {}
 
   async fetchByCandidateId(candidateId: string): Promise<HistoryEvent[]> {
     const { data, error } = await this.supabase

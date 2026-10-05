@@ -1,8 +1,8 @@
-import type { SupabaseClient } from '@supabase/supabase-js'
+import type { AppSupabaseClient } from './candidates.service'
 import type { Template, TemplateType } from '~/types/template.types'
 
 export class TemplatesService {
-  constructor(private supabase: SupabaseClient) {}
+  constructor(private supabase: AppSupabaseClient) {}
 
   async fetchByType(type: TemplateType): Promise<Template[]> {
     const { data, error } = await this.supabase

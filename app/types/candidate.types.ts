@@ -10,6 +10,32 @@ export type CandidateSource = 'hh' | 'avito'
 export type CandidateAddMethod = 'manual' | 'response'
 export type CandidateGender = 'male' | 'female'
 
+export type CandidateSortOption =
+  | 'created_at_desc'
+  | 'created_at_asc'
+  | 'name_asc'
+  | 'name_desc'
+  | 'status_asc'
+
+export interface CandidateFilterParams {
+  searchQuery?: string
+  vacancyId?: string | null
+  status?: CandidateStatus | 'all' | null
+  source?: CandidateSource | 'all' | null
+  datePeriod?: 'all' | 'today' | 'week' | 'month'
+  sortBy?: CandidateSortOption
+  page?: number
+  pageSize?: number
+}
+
+export interface CandidateListResponse {
+  items: Candidate[]
+  totalCount: number
+  page: number
+  pageSize: number
+  totalPages: number
+}
+
 export type Citizenship =
   | 'ru' | 'by' | 'az' | 'am' | 'kz' | 'kg'
   | 'tj' | 'ua' | 'uz' | 'tm' | 'md' | 'ge'

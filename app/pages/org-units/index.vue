@@ -118,7 +118,7 @@ const createUnit = async () => {
     opened_at: null,
     timezone: 'Europe/Moscow',
     actual_location: null,
-  } as any)
+  })
   showCreateModal.value = false
   Object.assign(newUnit, {
     name: '', category: '', interview_address: '',

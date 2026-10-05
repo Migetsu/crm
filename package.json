@@ -9,7 +9,9 @@
     "preview": "nuxt preview",
     "postinstall": "nuxt prepare",
     "lint": "eslint .",
-    "test": "vitest"
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "quality-gate": "npm run lint && npm run test"
   },
   "dependencies": {
     "@nuxtjs/supabase": "^1.4.2",

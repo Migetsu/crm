@@ -49,7 +49,7 @@ const leave = (el: Element) => {
   const HTMLElement = el as HTMLElement
   HTMLElement.style.height = HTMLElement.scrollHeight + 'px'
   // Force repaint
-  HTMLElement.offsetHeight
+  void HTMLElement.offsetHeight
   HTMLElement.style.height = '0'
 }
 </script>

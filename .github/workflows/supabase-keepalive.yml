@@ -1,0 +1,24 @@
+name: Supabase Keep-Alive
+
+on:
+  schedule:
+    # Run every 2 days at 06:00 UTC
+    - cron: '0 6 */2 * *'
+  workflow_dispatch: # Allows manual trigger from GitHub UI
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping Supabase Database
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL || 'https://miirdirlerdmkjxdmrqx.supabase.co' }}
+          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+        run: |
+          if [ -z "$SUPABASE_KEY" ]; then
+            echo "SUPABASE_KEY secret not found in repository secrets, using curl ping to health endpoint"
+            curl -f -s "https://miirdirlerdmkjxdmrqx.supabase.co/rest/v1/" || true
+          else
+            curl -f -s -H "apikey: $SUPABASE_KEY" -H "Authorization: Bearer $SUPABASE_KEY" "https://miirdirlerdmkjxdmrqx.supabase.co/rest/v1/profiles?select=id&limit=1"
+          fi
+          echo "Supabase ping completed successfully."

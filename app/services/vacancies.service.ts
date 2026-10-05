@@ -1,8 +1,8 @@
-import type { SupabaseClient } from '@supabase/supabase-js'
+import type { AppSupabaseClient } from './candidates.service'
 import type { Vacancy } from '~/types/vacancy.types'
 
 export class VacanciesService {
-  constructor(private supabase: SupabaseClient) {}
+  constructor(private supabase: AppSupabaseClient) {}
 
   async fetchAll(): Promise<Vacancy[]> {
     const { data, error } = await this.supabase

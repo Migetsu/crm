@@ -2,6 +2,8 @@ export default defineNuxtRouteMiddleware(async (to) => {
   const user = useSupabaseUser()
   const authStore = useAuthStore()
   
+  if (to.path.startsWith('/api/')) return
+
   if (!user.value && to.path !== '/login' && to.path !== '/register') {
     return navigateTo('/login')
   }

@@ -1,11 +1,12 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import { AuthService } from '~/services/auth.service'
+import type { Profile } from '~/types/user.types'
 
 export const useAuthStore = defineStore('auth', () => {
   const supabase = useSupabaseClient()
   const user = useSupabaseUser()
-  const profile = ref<Record<string, any> | null>(null)
+  const profile = ref<Profile | null>(null)
   const isLoading = ref(false)
   const error = ref<string | null>(null)
   
@@ -54,7 +55,7 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
-  const updateProfile = async (updates: any) => {
+  const updateProfile = async (updates: Partial<Profile>) => {
     if (!user.value) return
     try {
       const data = await authService.updateProfile(user.value.id, updates)

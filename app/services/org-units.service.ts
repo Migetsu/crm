@@ -1,8 +1,8 @@
-import type { SupabaseClient } from '@supabase/supabase-js'
+import type { AppSupabaseClient } from './candidates.service'
 import type { OrgUnit, OrgUnitManager } from '~/types/org-unit.types'
 
 export class OrgUnitsService {
-  constructor(private supabase: SupabaseClient) {}
+  constructor(private supabase: AppSupabaseClient) {}
 
   async fetchAll(): Promise<OrgUnit[]> {
     const { data, error } = await this.supabase

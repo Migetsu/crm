@@ -1,7 +1,8 @@
-import type { SupabaseClient } from '@supabase/supabase-js'
+import type { AppSupabaseClient } from './candidates.service'
+import type { Profile } from '~/types/user.types'
 
 export class AuthService {
-  constructor(private supabase: SupabaseClient) {}
+  constructor(private supabase: AppSupabaseClient) {}
 
   async login(email: string, password: string) {
     const { data, error } = await this.supabase.auth.signInWithPassword({
@@ -28,7 +29,7 @@ export class AuthService {
     return data
   }
 
-  async updateProfile(userId: string, updates: any) {
+  async updateProfile(userId: string, updates: Partial<Profile>) {
     const { data, error } = await this.supabase
       .from('profiles')
       .update(updates)

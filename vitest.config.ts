@@ -1,0 +1,30 @@
+import { defineConfig } from 'vitest/config'
+import path from 'node:path'
+
+export default defineConfig({
+  test: {
+    globals: true,
+    environment: 'node',
+    include: [
+      'tests/**/*.{test,spec}.ts',
+      'app/**/*.{test,spec}.ts'
+    ],
+    coverage: {
+      provider: 'v8',
+      reporter: ['text', 'json', 'html'],
+      exclude: [
+        'node_modules/**',
+        '.nuxt/**',
+        'dist/**'
+      ]
+    }
+  },
+  resolve: {
+    alias: {
+      '~': path.resolve(__dirname, './app'),
+      '@': path.resolve(__dirname, './app'),
+      '~~': path.resolve(__dirname, '.'),
+      '@@': path.resolve(__dirname, '.')
+    }
+  }
+})

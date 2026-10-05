@@ -21,10 +21,10 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { ROLE_LABELS } from '~/types/user.types'
-import type { UserRole } from '~/types/user.types'
+import type { UserRole, Profile } from '~/types/user.types'
 
 const supabase = useSupabaseClient()
-const users = ref<any[]>([])
+const users = ref<Profile[]>([])
 const isLoading = ref(false)
 
 onMounted(async () => {

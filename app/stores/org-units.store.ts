@@ -2,10 +2,11 @@ import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import { OrgUnitsService } from '~/services/org-units.service'
 import type { OrgUnit } from '~/types/org-unit.types'
+import { getErrorMessage } from '~/utils/error'
 
 export const useOrgUnitsStore = defineStore('orgUnits', () => {
   const supabase = useSupabaseClient()
-  const service = new OrgUnitsService(supabase as any)
+  const service = new OrgUnitsService(supabase)
 
   const orgUnits = ref<OrgUnit[]>([])
   const isLoading = ref(false)
@@ -16,8 +17,8 @@ export const useOrgUnitsStore = defineStore('orgUnits', () => {
     error.value = null
     try {
       orgUnits.value = await service.fetchAll()
-    } catch (e: any) {
-      error.value = e.message
+    } catch (e: unknown) {
+      error.value = getErrorMessage(e)
     } finally {
       isLoading.value = false
     }
@@ -30,8 +31,8 @@ export const useOrgUnitsStore = defineStore('orgUnits', () => {
       const unit = await service.create(payload)
       orgUnits.value.push(unit)
       return unit
-    } catch (e: any) {
-      error.value = e.message
+    } catch (e: unknown) {
+      error.value = getErrorMessage(e)
       return null
     } finally {
       isLoading.value = false
@@ -46,8 +47,8 @@ export const useOrgUnitsStore = defineStore('orgUnits', () => {
       const idx = orgUnits.value.findIndex(u => u.id === id)
       if (idx !== -1) orgUnits.value[idx] = updated
       return true
-    } catch (e: any) {
-      error.value = e.message
+    } catch (e: unknown) {
+      error.value = getErrorMessage(e)
       return false
     } finally {
       isLoading.value = false
@@ -59,8 +60,8 @@ export const useOrgUnitsStore = defineStore('orgUnits', () => {
     error.value = null
     try {
       orgUnits.value = await service.search(query)
-    } catch (e: any) {
-      error.value = e.message
+    } catch (e: unknown) {
+      error.value = getErrorMessage(e)
     } finally {
       isLoading.value = false
     }

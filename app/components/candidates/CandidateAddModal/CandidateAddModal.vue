@@ -114,7 +114,7 @@ const candidatesStore = useCandidatesStore()
 const vacanciesStore = useVacanciesStore()
 const supabase = useSupabaseClient()
 const user = useSupabaseUser()
-const historyService = new HistoryService(supabase as any)
+const historyService = new HistoryService(supabase)
 
 const isSubmitting = ref(false)
 const comment = ref('')
@@ -137,7 +137,7 @@ const form = reactive({
   add_method: 'manual' as string,
 })
 
-const errors = reactive<Record<string, string>>({})
+const errors = ref<Record<string, string>>({})
 
 const vacancyOptions = computed(() => {
   return vacanciesStore.vacancies
@@ -155,20 +155,21 @@ onMounted(async () => {
 })
 
 const validate = (): boolean => {
-  Object.keys(errors).forEach(k => delete errors[k])
+  const newErrors: Record<string, string> = {}
   
-  if (!form.vacancy_id) errors.vacancy_id = 'Выберите вакансию'
-  if (!form.last_name.trim()) errors.last_name = 'Введите фамилию'
-  if (!form.first_name.trim()) errors.first_name = 'Введите имя'
-  if (!form.has_no_middle_name && !form.middle_name.trim()) errors.middle_name = 'Введите отчество'
-  if (!form.birth_date) errors.birth_date = 'Укажите дату рождения'
-  if (!form.gender) errors.gender = 'Выберите пол'
-  if (!form.phone.trim()) errors.phone = 'Введите телефон'
-  if (!form.citizenship) errors.citizenship = 'Выберите гражданство'
-  if (!form.source) errors.source = 'Выберите источник'
-  if (!form.add_method) errors.add_method = 'Выберите способ'
+  if (!form.vacancy_id) newErrors.vacancy_id = 'Выберите вакансию'
+  if (!form.last_name.trim()) newErrors.last_name = 'Введите фамилию'
+  if (!form.first_name.trim()) newErrors.first_name = 'Введите имя'
+  if (!form.has_no_middle_name && !form.middle_name.trim()) newErrors.middle_name = 'Введите отчество'
+  if (!form.birth_date) newErrors.birth_date = 'Укажите дату рождения'
+  if (!form.gender) newErrors.gender = 'Выберите пол'
+  if (!form.phone.trim()) newErrors.phone = 'Введите телефон'
+  if (!form.citizenship) newErrors.citizenship = 'Выберите гражданство'
+  if (!form.source) newErrors.source = 'Выберите источник'
+  if (!form.add_method) newErrors.add_method = 'Выберите способ'
   
-  return Object.keys(errors).length === 0
+  errors.value = newErrors
+  return Object.keys(newErrors).length === 0
 }
 
 const handleSubmit = async () => {
@@ -218,7 +219,7 @@ const handleSubmit = async () => {
 // Reset form when modal opens
 watch(isOpen, (val) => {
   if (val) {
-    Object.keys(errors).forEach(k => delete errors[k])
+    errors.value = {}
     form.vacancy_id = ''
     form.last_name = ''
     form.first_name = ''

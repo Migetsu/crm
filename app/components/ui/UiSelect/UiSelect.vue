@@ -1,35 +1,34 @@
 <template lang="pug">
-.ui-select(:class="{ 'ui-select--error': !!error, 'ui-select--open': isOpen }")
+.ui-select(:class="{ 'ui-select--error': !!error, 'ui-select--open': isOpen }", ref="selectContainerRef")
   label.ui-select__label(v-if="label") {{ label }}
   .ui-select__trigger(@click="toggle", ref="triggerRef")
     span.ui-select__value(:class="{ 'ui-select__value--placeholder': !modelValue }")
       | {{ displayValue }}
     ChevronDown.ui-select__icon(:size="16")
     
-  Teleport(to="body")
-    .ui-select__dropdown(v-if="isOpen", :style="dropdownStyle", ref="dropdownRef")
-      .ui-select__search(v-if="searchable")
-        input.ui-select__search-input(
-          v-model="searchQuery",
-          placeholder="Поиск...",
-          ref="searchInputRef",
-          @click.stop
-        )
-      .ui-select__options
-        .ui-select__option(
-          v-for="option in filteredOptions",
-          :key="option.value",
-          :class="{ 'ui-select__option--selected': option.value === modelValue }",
-          @click.stop="selectOption(option.value)"
-        )
-          | {{ option.label }}
-        .ui-select__empty(v-if="filteredOptions.length === 0") Ничего не найдено
+  .ui-select__dropdown(v-if="isOpen", ref="dropdownRef")
+    .ui-select__search(v-if="searchable")
+      input.ui-select__search-input(
+        v-model="searchQuery",
+        placeholder="Поиск...",
+        ref="searchInputRef",
+        @click.stop
+      )
+    .ui-select__options
+      .ui-select__option(
+        v-for="option in filteredOptions",
+        :key="option.value",
+        :class="{ 'ui-select__option--selected': option.value === modelValue }",
+        @click.stop="selectOption(option.value)"
+      )
+        | {{ option.label }}
+      .ui-select__empty(v-if="filteredOptions.length === 0") Ничего не найдено
   
   span.ui-select__error(v-if="error") {{ error }}
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onBeforeUnmount, nextTick, watch } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import { ChevronDown } from 'lucide-vue-next'
 
 export interface SelectOption {
@@ -52,10 +51,10 @@ const emit = defineEmits<{
 
 const isOpen = ref(false)
 const searchQuery = ref('')
+const selectContainerRef = ref<HTMLElement | null>(null)
 const triggerRef = ref<HTMLElement | null>(null)
 const dropdownRef = ref<HTMLElement | null>(null)
 const searchInputRef = ref<HTMLInputElement | null>(null)
-const dropdownStyle = ref<Record<string, string>>({})
 
 const displayValue = computed(() => {
   if (!props.modelValue) return props.placeholder || 'Выберите...'
@@ -73,7 +72,6 @@ const toggle = () => {
   isOpen.value = !isOpen.value
   if (isOpen.value) {
     nextTick(() => {
-      updatePosition()
       searchInputRef.value?.focus()
     })
   } else {
@@ -87,24 +85,9 @@ const selectOption = (value: string) => {
   searchQuery.value = ''
 }
 
-const updatePosition = () => {
-  if (!triggerRef.value) return
-  const rect = triggerRef.value.getBoundingClientRect()
-  dropdownStyle.value = {
-    position: 'fixed',
-    top: `${rect.bottom + 4}px`,
-    left: `${rect.left}px`,
-    width: `${rect.width}px`,
-    zIndex: '10010',
-  }
-}
-
 const handleClickOutside = (e: MouseEvent) => {
   const target = e.target as Node
-  if (
-    triggerRef.value && !triggerRef.value.contains(target) &&
-    dropdownRef.value && !dropdownRef.value.contains(target)
-  ) {
+  if (selectContainerRef.value && !selectContainerRef.value.contains(target)) {
     isOpen.value = false
     searchQuery.value = ''
   }
@@ -124,6 +107,10 @@ onBeforeUnmount(() => {
   flex-direction: column;
   gap: 6px;
   position: relative;
+
+  &--open {
+    z-index: 1000;
+  }
   
   &__label {
     font-size: 14px;
@@ -150,6 +137,9 @@ onBeforeUnmount(() => {
   &__value {
     font-size: 14px;
     color: var(--color-text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
     
     &--placeholder {
       color: var(--color-text-secondary);
@@ -160,6 +150,7 @@ onBeforeUnmount(() => {
   &__icon {
     color: var(--color-text-secondary);
     transition: transform 0.2s;
+    flex-shrink: 0;
   }
   
   &--open &__icon {
@@ -167,14 +158,20 @@ onBeforeUnmount(() => {
   }
   
   &__dropdown {
+    position: absolute;
+    top: calc(100% + 4px);
+    left: 0;
+    width: 100%;
+    min-width: 180px;
     background-color: var(--color-bg-card);
     border: 1px solid var(--color-border);
     border-radius: var(--radius-md);
-    box-shadow: var(--shadow-lg);
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.4), 0 8px 10px -6px rgba(0, 0, 0, 0.3);
     max-height: 240px;
     overflow: hidden;
     display: flex;
     flex-direction: column;
+    z-index: 1010;
   }
   
   &__search {

@@ -10,13 +10,21 @@ export const useTemplatesStore = defineStore('templates', () => {
 
   const templates = ref<Template[]>([])
   const isLoading = ref(false)
+  const loadedTypes = ref<Record<string, boolean>>({})
   const error = ref<string | null>(null)
 
-  const fetchByType = async (type: TemplateType) => {
+  const fetchByType = async (type: TemplateType, force = false) => {
+    if (!force && loadedTypes.value[type] && templates.value.some(t => t.type === type)) {
+      service.fetchByType(type).then(res => {
+        templates.value = res
+      }).catch(() => {})
+      return
+    }
     isLoading.value = true
     error.value = null
     try {
       templates.value = await service.fetchByType(type)
+      loadedTypes.value[type] = true
     } catch (e: unknown) {
       error.value = getErrorMessage(e)
     } finally {
@@ -69,6 +77,7 @@ export const useTemplatesStore = defineStore('templates', () => {
   return {
     templates,
     isLoading,
+    loadedTypes,
     error,
     fetchByType,
     update,

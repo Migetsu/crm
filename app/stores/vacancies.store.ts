@@ -11,13 +11,21 @@ export const useVacanciesStore = defineStore('vacancies', () => {
   const vacancies = ref<Vacancy[]>([])
   const currentVacancy = ref<Vacancy | null>(null)
   const isLoading = ref(false)
+  const isLoaded = ref(false)
   const error = ref<string | null>(null)
 
-  const fetchAll = async () => {
+  const fetchAll = async (force = false) => {
+    if (!force && isLoaded.value && vacancies.value.length > 0) {
+      service.fetchAll().then(res => {
+        vacancies.value = res
+      }).catch(() => {})
+      return
+    }
     isLoading.value = true
     error.value = null
     try {
       vacancies.value = await service.fetchAll()
+      isLoaded.value = true
     } catch (e: unknown) {
       error.value = getErrorMessage(e)
     } finally {
@@ -98,6 +106,7 @@ export const useVacanciesStore = defineStore('vacancies', () => {
     vacancies,
     currentVacancy,
     isLoading,
+    isLoaded,
     error,
     fetchAll,
     fetchById,

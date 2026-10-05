@@ -10,13 +10,21 @@ export const useOrgUnitsStore = defineStore('orgUnits', () => {
 
   const orgUnits = ref<OrgUnit[]>([])
   const isLoading = ref(false)
+  const isLoaded = ref(false)
   const error = ref<string | null>(null)
 
-  const fetchAll = async () => {
+  const fetchAll = async (force = false) => {
+    if (!force && isLoaded.value && orgUnits.value.length > 0) {
+      service.fetchAll().then(res => {
+        orgUnits.value = res
+      }).catch(() => {})
+      return
+    }
     isLoading.value = true
     error.value = null
     try {
       orgUnits.value = await service.fetchAll()
+      isLoaded.value = true
     } catch (e: unknown) {
       error.value = getErrorMessage(e)
     } finally {
@@ -107,6 +115,7 @@ export const useOrgUnitsStore = defineStore('orgUnits', () => {
   return {
     orgUnits,
     isLoading,
+    isLoaded,
     error,
     fetchAll,
     create,

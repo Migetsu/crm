@@ -36,10 +36,6 @@ aside.app-sidebar(:class="{ 'app-sidebar--collapsed': isCollapsed }")
         MapPin(:size="18")
         span.app-sidebar__link-text(v-if="!isCollapsed") Орг единицы
         
-      NuxtLink.app-sidebar__link(to="/analytics", active-class="app-sidebar__link--active", v-if="filteredMenuContains('Аналитика и воронка')")
-        BarChart3(:size="18")
-        span.app-sidebar__link-text(v-if="!isCollapsed") Аналитика и воронка
-        
     // Моя компания
     UiAccordion(
       v-if="shouldShowGroup('company')",
@@ -84,7 +80,7 @@ import { useLocalStorage } from '@vueuse/core'
 import { useAuthStore } from '~/stores/auth.store'
 import { 
   Users, Briefcase, MapPin, Search, ChevronLeft, ChevronRight, 
-  FileText, Mail, Settings, BarChart3 
+  FileText, Mail, Settings 
 } from 'lucide-vue-next'
 import UiAccordion from '~/components/ui/UiAccordion/UiAccordion.vue'
 

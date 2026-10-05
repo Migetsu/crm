@@ -18,6 +18,7 @@ export const useCandidatesStore = defineStore('candidates', () => {
   const allCandidatesForKanban = ref<Candidate[]>([])
   const currentCandidate = ref<Candidate | null>(null)
   const isLoading = ref(false)
+  const isLoaded = ref(false)
   const error = ref<string | null>(null)
 
   // View mode
@@ -62,8 +63,8 @@ export const useCandidatesStore = defineStore('candidates', () => {
     return groups
   })
 
-  const fetchWithFilters = async () => {
-    isLoading.value = true
+  const fetchWithFilters = async (showLoading = true) => {
+    if (showLoading) isLoading.value = true
     error.value = null
     try {
       if (viewMode.value === 'kanban') {
@@ -85,16 +86,21 @@ export const useCandidatesStore = defineStore('candidates', () => {
         totalCount.value = res.totalCount
         totalPages.value = res.totalPages
       }
+      isLoaded.value = true
     } catch (e: unknown) {
       error.value = getErrorMessage(e)
     } finally {
-      isLoading.value = false
+      if (showLoading) isLoading.value = false
     }
   }
 
-  const fetchAll = async () => {
+  const fetchAll = async (force = false) => {
+    if (!force && isLoaded.value && (candidates.value.length > 0 || allCandidatesForKanban.value.length > 0)) {
+      void fetchWithFilters(false)
+      return
+    }
     page.value = 1
-    await fetchWithFilters()
+    await fetchWithFilters(true)
   }
 
   const setViewMode = async (mode: CandidateViewMode) => {
@@ -208,6 +214,7 @@ export const useCandidatesStore = defineStore('candidates', () => {
     allCandidatesForKanban,
     currentCandidate,
     isLoading,
+    isLoaded,
     error,
     viewMode,
     page,

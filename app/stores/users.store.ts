@@ -14,6 +14,7 @@ export const useUsersStore = defineStore('users', () => {
   const supabase = useSupabaseClient()
   const users = ref<Profile[]>([])
   const isLoading = ref(false)
+  const isLoaded = ref(false)
   const error = ref<string | null>(null)
 
   const getAuthHeaders = async (): Promise<Record<string, string>> => {
@@ -26,7 +27,18 @@ export const useUsersStore = defineStore('users', () => {
     }
   }
 
-  const fetchAll = async () => {
+  const fetchAll = async (force = false) => {
+    if (!force && isLoaded.value && users.value.length > 0) {
+      supabase
+        .from('profiles')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .then(({ data }) => {
+          if (data) users.value = data as Profile[]
+        })
+        .catch(() => {})
+      return
+    }
     isLoading.value = true
     error.value = null
     try {
@@ -37,6 +49,7 @@ export const useUsersStore = defineStore('users', () => {
 
       if (fetchErr) throw fetchErr
       users.value = (data || []) as Profile[]
+      isLoaded.value = true
     } catch (e: unknown) {
       error.value = getErrorMessage(e)
     } finally {
@@ -149,6 +162,7 @@ export const useUsersStore = defineStore('users', () => {
   return {
     users,
     isLoading,
+    isLoaded,
     error,
     fetchAll,
     createUser,

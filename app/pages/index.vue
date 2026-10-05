@@ -38,7 +38,8 @@
     //- Kanban View
     CandidateKanbanBoard(
       v-if="candidatesStore.viewMode === 'kanban'",
-      @status-change="openStatusModal"
+      @status-change="openStatusModal",
+      @edit="openEditModal"
     )
 
     //- List View
@@ -56,12 +57,18 @@
           v-for="candidate in candidatesStore.candidates",
           :key="candidate.id",
           :candidate="candidate",
-          @status-change="openStatusModal(candidate)"
+          @status-change="openStatusModal(candidate)",
+          @edit="openEditModal(candidate)"
         )
 
       CandidatePagination
 
   CandidateAddModal(v-model="showAddModal", @created="handleCandidateCreated")
+  CandidateEditModal(
+    v-model="showEditModal",
+    :candidate="selectedCandidateForEdit",
+    @updated="handleCandidateUpdated"
+  )
   CandidateStatusModal(
     v-model="showStatusModal",
     :candidate="selectedCandidate",
@@ -81,8 +88,10 @@ import type { Candidate, CandidateStatus } from '~/types/candidate.types'
 const candidatesStore = useCandidatesStore()
 
 const showAddModal = ref(false)
+const showEditModal = ref(false)
 const showStatusModal = ref(false)
 const selectedCandidate = ref<Candidate | null>(null)
+const selectedCandidateForEdit = ref<Candidate | null>(null)
 const selectedTargetStatus = ref<CandidateStatus | null>(null)
 
 onMounted(async () => {
@@ -95,12 +104,24 @@ const openStatusModal = (candidate: Candidate, targetStatus?: CandidateStatus) =
   showStatusModal.value = true
 }
 
+const openEditModal = (candidate: Candidate) => {
+  selectedCandidateForEdit.value = candidate
+  showEditModal.value = true
+}
+
 const handleStatusUpdated = async () => {
   await candidatesStore.fetchWithFilters()
 }
 
 const handleCandidateCreated = async () => {
   await candidatesStore.fetchWithFilters()
+}
+
+const handleCandidateUpdated = async () => {
+  await candidatesStore.fetchWithFilters()
+  if (candidatesStore.viewMode === 'kanban') {
+    await candidatesStore.fetchAllForKanban()
+  }
 }
 </script>
 

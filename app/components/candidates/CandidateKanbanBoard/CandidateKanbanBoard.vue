@@ -31,12 +31,19 @@
           )
             .candidate-kanban__card-header
               span.candidate-kanban__card-name {{ formatFullName(candidate) }}
-              button.candidate-kanban__card-menu-btn(
-                type="button",
-                title="Сменить статус",
-                @click.stop="$emit('statusChange', candidate)"
-              )
-                ArrowRightLeft(:size="14")
+              .candidate-kanban__card-actions
+                button.candidate-kanban__card-menu-btn(
+                  type="button",
+                  title="Редактировать кандидата",
+                  @click.stop="$emit('edit', candidate)"
+                )
+                  Edit(:size="14")
+                button.candidate-kanban__card-menu-btn(
+                  type="button",
+                  title="Сменить статус",
+                  @click.stop="$emit('statusChange', candidate)"
+                )
+                  ArrowRightLeft(:size="14")
 
             .candidate-kanban__card-meta
               .candidate-kanban__card-item(v-if="candidate.phone")
@@ -54,7 +61,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { Phone, Briefcase, ArrowRightLeft } from 'lucide-vue-next'
+import { Phone, Briefcase, ArrowRightLeft, Edit } from 'lucide-vue-next'
 import { format } from 'date-fns'
 import { ru } from 'date-fns/locale'
 import { useCandidatesStore } from '~/stores/candidates.store'
@@ -64,6 +71,7 @@ import { SOURCE_LABELS } from '~/types/candidate.types'
 
 const emit = defineEmits<{
   (e: 'statusChange', candidate: Candidate, targetStatus?: CandidateStatus): void
+  (e: 'edit', candidate: Candidate): void
 }>()
 
 const router = useRouter()
@@ -288,6 +296,12 @@ const handleDrop = (columnId: string) => {
     font-weight: 600;
     color: var(--color-text-primary);
     line-height: 1.3;
+  }
+
+  &__card-actions {
+    display: flex;
+    align-items: center;
+    gap: 2px;
   }
 
   &__card-menu-btn {

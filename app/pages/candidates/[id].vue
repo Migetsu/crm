@@ -1,13 +1,18 @@
 <template lang="pug">
-.page-candidate(v-if="!candidatesStore.isLoading && candidate")
+.page-candidate(v-if="candidate")
   .page-candidate__top
     button.page-candidate__back(@click="$router.push('/')")
       ArrowLeft(:size="18")
       | Назад к витрине
-    UiButton(variant="danger", size="sm", @click="handleDeleteCandidate")
-      template(#icon)
-        Trash2(:size="15")
-      | Удалить кандидата
+    .page-candidate__top-actions
+      UiButton(variant="secondary", size="sm", @click="showEditModal = true")
+        template(#icon)
+          Edit(:size="15")
+        | Редактировать
+      UiButton(variant="danger", size="sm", @click="handleDeleteCandidate")
+        template(#icon)
+          Trash2(:size="15")
+        | Удалить кандидата
       
   .page-candidate__layout
     //- Left panel
@@ -46,6 +51,10 @@
           template(#icon)
             Mail(:size="14")
           | Отправить Email
+        UiButton(variant="secondary", size="sm", @click="showEditModal = true")
+          template(#icon)
+            Edit(:size="14")
+          | Редактировать
         UiButton(variant="secondary", size="sm", @click="showCommentModal = true")
           template(#icon)
             MessageCircle(:size="14")
@@ -292,7 +301,14 @@
       UiButton(variant="secondary", @click="showCommentModal = false") Отмена
       UiButton(variant="primary", :disabled="!commentText.trim()", @click="addComment") Сохранить
 
-.page-candidate.page-candidate--skeleton(v-else-if="candidatesStore.isLoading", aria-hidden="true")
+  //- Candidate Edit Modal
+  CandidateEditModal(
+    v-model="showEditModal",
+    :candidate="candidate",
+    @updated="refreshData"
+  )
+
+.page-candidate.page-candidate--skeleton(v-else-if="candidatesStore.isLoading && !candidate", aria-hidden="true")
   .page-candidate__top
     UiSkeleton(width="140px", height="24px")
   .page-candidate__layout
@@ -333,7 +349,7 @@ import { ref, computed, reactive, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import {
   ArrowLeft, Phone, Mail, MapPin, MessageSquare, Clock, PhoneCall,
-  MessageCircle, Paperclip, ShieldCheck, FileText, Download, ExternalLink, Trash2,
+  MessageCircle, Paperclip, ShieldCheck, FileText, Download, ExternalLink, Trash2, Edit,
 } from 'lucide-vue-next'
 import { format, differenceInYears } from 'date-fns'
 import { ru } from 'date-fns/locale'
@@ -345,6 +361,7 @@ import { HistoryService } from '~/services/history.service'
 import { StorageService, type StorageFileItem } from '~/services/storage.service'
 import { formatFileSize } from '~/utils/file-validation'
 import UiSkeleton from '~/components/ui/UiSkeleton/UiSkeleton.vue'
+import CandidateEditModal from '~/components/candidates/CandidateEditModal/CandidateEditModal.vue'
 import {
   STATUS_LABELS, STATUS_COLORS, CITIZENSHIP_LABELS, GENDER_LABELS,
   SOURCE_LABELS, ADD_METHOD_LABELS, REJECTED_LABELS, SELF_REJECTED_LABELS,
@@ -373,6 +390,7 @@ const activeTab = ref('resume')
 
 // Modals
 const showStatusModal = ref(false)
+const showEditModal = ref(false)
 const showCommentModal = ref(false)
 const showCallModal = ref(false)
 const showMessageModal = ref(false)
@@ -739,6 +757,12 @@ const addComment = async () => {
     align-items: center;
     justify-content: space-between;
     margin-bottom: var(--spacing-6);
+  }
+
+  &__top-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
   }
   
   &__back {

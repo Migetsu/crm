@@ -17,6 +17,14 @@ article.candidate-card(@click="navigateToCandidate")
       | {{ statusLabel }}
     .candidate-card__date {{ formattedDate }}
     UiButton.candidate-card__action(
+      variant="ghost",
+      size="sm",
+      title="Редактировать кандидата",
+      @click.stop="$emit('edit', candidate)"
+    )
+      template(#icon)
+        Edit(:size="14")
+    UiButton.candidate-card__action(
       variant="secondary",
       size="sm",
       @click.stop="$emit('statusChange', candidate)"
@@ -26,7 +34,7 @@ article.candidate-card(@click="navigateToCandidate")
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useRouter } from 'vue-router'
-import { Phone, Mail } from 'lucide-vue-next'
+import { Phone, Mail, Edit } from 'lucide-vue-next'
 import { format } from 'date-fns'
 import { ru } from 'date-fns/locale'
 import type { Candidate } from '~/types/candidate.types'
@@ -36,8 +44,9 @@ const props = defineProps<{
   candidate: Candidate
 }>()
 
-defineEmits<{
-  (e: 'statusChange', candidate: Candidate): void
+const emit = defineEmits<{
+  statusChange: [candidate: Candidate]
+  edit: [candidate: Candidate]
 }>()
 
 const router = useRouter()

@@ -3,6 +3,7 @@ import { ref } from 'vue'
 import { VacanciesService } from '~/services/vacancies.service'
 import type { Vacancy } from '~/types/vacancy.types'
 import { getErrorMessage } from '~/utils/error'
+import { isAllowedVacancyTitle } from '~/data/vacancy-presets'
 
 export const useVacanciesStore = defineStore('vacancies', () => {
   const supabase = useSupabaseClient()
@@ -55,6 +56,11 @@ export const useVacanciesStore = defineStore('vacancies', () => {
   }
 
   const create = async (payload: Omit<Vacancy, 'id' | 'created_at'>): Promise<Vacancy | null> => {
+    if (!isAllowedVacancyTitle(payload.title)) {
+      error.value = 'Создание произвольных вакансий запрещено. Разрешены только 6 типовых должностей розничной сети.'
+      return null
+    }
+
     isLoading.value = true
     error.value = null
     try {

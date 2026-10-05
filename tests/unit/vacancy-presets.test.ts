@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { VACANCY_PRESETS, findVacancyPresetById } from '~/data/vacancy-presets'
+import { VACANCY_PRESETS, findVacancyPresetById, isAllowedVacancyTitle } from '~/data/vacancy-presets'
 
 describe('vacancy-presets', () => {
   it('contains exactly 6 pre-configured retail vacancies requested by user', () => {
@@ -50,5 +50,12 @@ describe('vacancy-presets', () => {
 
     const notFound = findVacancyPresetById('unknown-id')
     expect(notFound).toBeUndefined()
+  })
+
+  it('allows only the 6 preset titles', () => {
+    expect(isAllowedVacancyTitle(' пекарь ')).toBe(true)
+    expect(isAllowedVacancyTitle('Директор магазина')).toBe(true)
+    expect(isAllowedVacancyTitle('Мерчендайзер')).toBe(false)
+    expect(isAllowedVacancyTitle('')).toBe(false)
   })
 })

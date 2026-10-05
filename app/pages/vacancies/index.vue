@@ -105,17 +105,16 @@
         ) {{ v.is_open ? 'Закрыть' : 'Открыть' }}
 
   //- Create vacancy modal
-  UiModal(v-model="showCreateModal", title="Создать вакансию", size="lg")
+  UiModal(v-model="showCreateModal", title="Открыть вакансию в подразделении", size="lg")
     .vacancy-form
       UiSelect(
         v-model="selectedPresetId",
-        label="Шаблон типовой должности",
+        label="Типовая должность сети *",
         :options="presetSelectOptions",
-        placeholder="Выберите должность для быстрого заполнения",
+        placeholder="Выберите должность из списка",
         searchable
       )
 
-      UiInput(v-model="newVacancy.title", label="Название вакансии *", placeholder="Например, Продавец-кассир")
       UiSelect(
         v-model="newVacancy.org_unit_id",
         label="Филиал / Подразделение *",
@@ -124,30 +123,37 @@
         searchable
       )
       .vacancy-form__field
-        label.vacancy-form__label Краткое описание
+        label.vacancy-form__label Краткое описание (стандарт сети)
         textarea.vacancy-form__textarea(
-          v-model="newVacancy.description"
+          :value="newVacancy.description"
           rows="3"
-          placeholder="О проекте, задачах..."
+          placeholder="Выберите типовую должность..."
+          readonly
         )
       .vacancy-form__field
-        label.vacancy-form__label Требования к соискателю
+        label.vacancy-form__label Требования к соискателю (стандарт сети)
         textarea.vacancy-form__textarea(
-          v-model="newVacancy.requirements"
+          :value="newVacancy.requirements"
           rows="4"
-          placeholder="Опыт, навыки, образование..."
+          placeholder="Выберите типовую должность..."
+          readonly
         )
       .vacancy-form__field
-        label.vacancy-form__label Обязанности
+        label.vacancy-form__label Обязанности (стандарт сети)
         textarea.vacancy-form__textarea(
-          v-model="newVacancy.responsibilities"
+          :value="newVacancy.responsibilities"
           rows="5"
           placeholder="Что предстоит делать..."
+          readonly
         )
     template(#footer)
       UiButton(variant="secondary", @click="closeCreateModal") Отмена
-      UiButton(variant="primary", @click="createVacancy", :disabled="!newVacancy.title.trim() || isSubmitting")
-        | {{ isSubmitting ? 'Создание...' : 'Создать вакансию' }}
+      UiButton(
+        variant="primary",
+        @click="createVacancy",
+        :disabled="!selectedPresetId || !newVacancy.org_unit_id || isSubmitting"
+      )
+        | {{ isSubmitting ? 'Создание...' : 'Открыть вакансию' }}
 </template>
 
 <script setup lang="ts">
@@ -182,13 +188,10 @@ const newVacancy = reactive({
 })
 
 const presetSelectOptions = computed(() => {
-  return [
-    { value: '', label: '— Свой вариант (чистая форма) —' },
-    ...VACANCY_PRESETS.map(p => ({
-      value: p.id,
-      label: p.title,
-    })),
-  ]
+  return VACANCY_PRESETS.map(p => ({
+    value: p.id,
+    label: p.title,
+  }))
 })
 
 watch(selectedPresetId, (newId) => {
@@ -276,7 +279,7 @@ const toggleVacancy = async (v: Vacancy) => {
 }
 
 const createVacancy = async () => {
-  if (!newVacancy.title.trim()) return
+  if (!selectedPresetId.value || !newVacancy.title.trim()) return
   isSubmitting.value = true
   try {
     const res = await vacanciesStore.create({

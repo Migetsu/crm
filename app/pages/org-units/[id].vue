@@ -4,16 +4,6 @@
     button.page-org-unit__back(@click="$router.push('/org-units')")
       ArrowLeft(:size="18")
       | Назад к подразделениям
-    .page-org-unit__top-actions
-      UiButton(
-        v-if="permissions.canAddNewVacancy.value",
-        variant="primary",
-        size="sm",
-        @click="openCreateModal"
-      )
-        template(#icon)
-          Plus(:size="15")
-        | Добавить другую вакансию
 
   //- Main Info Card
   .page-org-unit__header-card
@@ -152,43 +142,6 @@
               component(:is="item.isOpen ? XCircle : CheckCircle2", :size="15")
             | {{ item.isOpen ? 'Закрыть вакансию' : 'Открыть вакансию' }}
 
-  //- Modal: Create custom vacancy for this unit
-  UiModal(v-model="showCreateModal", title="Добавить вакансию в филиал", size="lg")
-    .vacancy-form
-      UiSelect(
-        v-model="selectedPresetId",
-        label="Шаблон типовой должности",
-        :options="presetSelectOptions",
-        placeholder="Выберите должность для быстрого заполнения",
-        searchable
-      )
-      UiInput(v-model="newVacancy.title", label="Название вакансии *", placeholder="Например, Мерчендайзер")
-      .vacancy-form__field
-        label.vacancy-form__label Краткое описание
-        textarea.vacancy-form__textarea(
-          v-model="newVacancy.description"
-          rows="3"
-          placeholder="О проекте, условиях..."
-        )
-      .vacancy-form__field
-        label.vacancy-form__label Требования к соискателю
-        textarea.vacancy-form__textarea(
-          v-model="newVacancy.requirements"
-          rows="4"
-          placeholder="Опыт, навыки..."
-        )
-      .vacancy-form__field
-        label.vacancy-form__label Обязанности
-        textarea.vacancy-form__textarea(
-          v-model="newVacancy.responsibilities"
-          rows="4"
-          placeholder="Что предстоит делать..."
-        )
-    template(#footer)
-      UiButton(variant="secondary", @click="closeCreateModal") Отмена
-      UiButton(variant="primary", @click="createCustomVacancy", :disabled="!newVacancy.title.trim() || isSubmittingVacancy")
-        | {{ isSubmittingVacancy ? 'Создание...' : 'Создать вакансию' }}
-
   //- Modal: Manage Managers in this unit
   UiModal(
     v-model="showManagersModal",
@@ -308,10 +261,7 @@ const confirm = useConfirm()
 const unitId = computed(() => route.params.id as string)
 const unit = computed(() => orgUnitsStore.currentUnit)
 
-const showCreateModal = ref(false)
 const showManagersModal = ref(false)
-const isSubmittingVacancy = ref(false)
-const selectedPresetId = ref('')
 const togglingKeys = ref<Set<string>>(new Set())
 
 const managerRoleOptions = [
@@ -333,40 +283,6 @@ const isNewManagerValid = computed(() => {
     newManager.email.trim().length > 0 &&
     newManager.phone.trim().length > 0
   )
-})
-
-const newVacancy = reactive({
-  title: '',
-  description: '',
-  requirements: '',
-  responsibilities: '',
-})
-
-const presetSelectOptions = computed(() => {
-  return [
-    { value: '', label: '— Свой вариант (чистая форма) —' },
-    ...VACANCY_PRESETS.map(p => ({
-      value: p.id,
-      label: p.title,
-    })),
-  ]
-})
-
-watch(selectedPresetId, (newId) => {
-  if (!newId) {
-    newVacancy.title = ''
-    newVacancy.description = ''
-    newVacancy.requirements = ''
-    newVacancy.responsibilities = ''
-    return
-  }
-  const preset = findVacancyPresetById(newId)
-  if (preset) {
-    newVacancy.title = preset.title
-    newVacancy.description = preset.description
-    newVacancy.requirements = preset.requirements
-    newVacancy.responsibilities = preset.responsibilities
-  }
 })
 
 onMounted(async () => {
@@ -499,46 +415,6 @@ const handleToggleVacancy = async (item: UnitVacancyDisplayItem) => {
     console.error(err)
   } finally {
     togglingKeys.value.delete(toggleKey)
-  }
-}
-
-// Custom vacancy creation modal
-const openCreateModal = () => {
-  selectedPresetId.value = ''
-  newVacancy.title = ''
-  newVacancy.description = ''
-  newVacancy.requirements = ''
-  newVacancy.responsibilities = ''
-  showCreateModal.value = true
-}
-
-const closeCreateModal = () => {
-  showCreateModal.value = false
-}
-
-const createCustomVacancy = async () => {
-  if (!newVacancy.title.trim() || !unitId.value) return
-  isSubmittingVacancy.value = true
-  try {
-    const res = await vacanciesStore.create({
-      title: newVacancy.title.trim(),
-      description: newVacancy.description.trim() || null,
-      requirements: newVacancy.requirements.trim() || null,
-      responsibilities: newVacancy.responsibilities.trim() || null,
-      org_unit_id: unitId.value,
-      is_open: true,
-    })
-    if (res) {
-      toast.success('Вакансия создана и открыта в филиале')
-      showCreateModal.value = false
-    } else {
-      toast.error('Не удалось создать вакансию')
-    }
-  } catch (err: unknown) {
-    toast.error('Ошибка при создании вакансии')
-    console.error(err)
-  } finally {
-    isSubmittingVacancy.value = false
   }
 }
 

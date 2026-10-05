@@ -97,3 +97,12 @@ export const VACANCY_PRESETS: VacancyPreset[] = [
 export const findVacancyPresetById = (id: string): VacancyPreset | undefined => {
   return VACANCY_PRESETS.find(preset => preset.id === id)
 }
+
+export const ALLOWED_VACANCY_TITLES: readonly string[] = Object.freeze(
+  VACANCY_PRESETS.map(preset => preset.title)
+)
+
+export const isAllowedVacancyTitle = (title: string): boolean => {
+  const normalized = title.trim().toLowerCase()
+  return VACANCY_PRESETS.some(preset => preset.title.trim().toLowerCase() === normalized)
+}

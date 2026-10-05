@@ -46,9 +46,11 @@
     .org-unit-card(v-for="unit in orgUnitsStore.orgUnits", :key="unit.id")
       .org-unit-card__header
         .org-unit-card__title-row
-          h3.org-unit-card__name {{ unit.name }}
+          NuxtLink.org-unit-card__name(:to="`/org-units/${unit.id}`") {{ unit.name }}
           span.org-unit-card__category(v-if="unit.category") {{ unit.category }}
         .org-unit-card__actions
+          NuxtLink.org-unit-card__vacancies-btn(:to="`/org-units/${unit.id}`")
+            | Вакансии магазина ▶
           UiButton(variant="secondary", size="sm", @click="openManagersModal(unit)")
             template(#icon)
               Users(:size="14")
@@ -508,7 +510,29 @@ const createUnit = async () => {
     font-size: 17px;
     font-weight: 600;
     color: var(--color-text-primary);
-    margin: 0;
+    text-decoration: none;
+    transition: color 0.2s;
+
+    &:hover {
+      color: var(--color-primary);
+      text-decoration: underline;
+    }
+  }
+
+  &__vacancies-btn {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--color-primary);
+    text-decoration: none;
+    padding: 6px 12px;
+    border-radius: var(--radius-md);
+    background-color: rgba(59, 130, 246, 0.1);
+    transition: all 0.2s;
+
+    &:hover {
+      background-color: var(--color-primary);
+      color: white;
+    }
   }
 
   &__category {

@@ -9,9 +9,42 @@ export const useOrgUnitsStore = defineStore('orgUnits', () => {
   const service = new OrgUnitsService(supabase)
 
   const orgUnits = ref<OrgUnit[]>([])
+  const currentUnit = ref<OrgUnit | null>(null)
   const isLoading = ref(false)
   const isLoaded = ref(false)
   const error = ref<string | null>(null)
+
+  const fetchById = async (id: string, force = false): Promise<OrgUnit | null> => {
+    const existing = orgUnits.value.find(u => u.id === id)
+    if (existing && !force) {
+      currentUnit.value = existing
+      service.fetchById(id).then(fresh => {
+        currentUnit.value = fresh
+        const idx = orgUnits.value.findIndex(u => u.id === id)
+        if (idx !== -1) orgUnits.value[idx] = fresh
+      }).catch(() => {})
+      return existing
+    }
+
+    isLoading.value = true
+    error.value = null
+    try {
+      const unit = await service.fetchById(id)
+      currentUnit.value = unit
+      const idx = orgUnits.value.findIndex(u => u.id === id)
+      if (idx !== -1) {
+        orgUnits.value[idx] = unit
+      } else {
+        orgUnits.value.push(unit)
+      }
+      return unit
+    } catch (e: unknown) {
+      error.value = getErrorMessage(e)
+      return null
+    } finally {
+      isLoading.value = false
+    }
+  }
 
   const fetchAll = async (force = false) => {
     if (!force && isLoaded.value && orgUnits.value.length > 0) {
@@ -114,10 +147,12 @@ export const useOrgUnitsStore = defineStore('orgUnits', () => {
 
   return {
     orgUnits,
+    currentUnit,
     isLoading,
     isLoaded,
     error,
     fetchAll,
+    fetchById,
     create,
     update,
     search,

@@ -49,12 +49,18 @@ export class OrgUnitsService {
   }
 
   async search(query: string): Promise<OrgUnit[]> {
-    if (!query.trim()) return this.fetchAll()
+    const trimmed = query.trim()
+    if (!trimmed) return this.fetchAll()
+
+    const normalized = trimmed.replace(/[^\w\sа-яА-ЯёЁ+№.-]/g, '').trim()
+    if (!normalized) return this.fetchAll()
 
     const { data, error } = await this.supabase
       .from('org_units')
       .select('*, managers:org_unit_managers(*)')
-      .or(`name.ilike.%${query}%,interview_address.ilike.%${query}%`)
+      .or(
+        `name.ilike.%${normalized}%,interview_address.ilike.%${normalized}%,director_full_name.ilike.%${normalized}%,category.ilike.%${normalized}%`
+      )
       .order('name')
 
     if (error) throw error

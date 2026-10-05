@@ -10,13 +10,20 @@
       | Добавить подразделение
       
   .page-org-units__search
-    .candidate-search__input-wrapper
-      Search.candidate-search__icon(:size="16")
-      input.candidate-search__input(
+    .page-org-units__search-wrapper
+      Search.page-org-units__search-icon(:size="16")
+      input.page-org-units__search-input(
         v-model="searchQuery",
-        placeholder="Поиск по названию или адресу...",
+        placeholder="Поиск по названию, адресу или директору...",
         @input="debouncedSearch"
       )
+      button.page-org-units__search-clear(
+        v-if="searchQuery",
+        type="button",
+        title="Очистить поиск",
+        @click="clearSearch"
+      )
+        X(:size="14")
       
   .page-org-units__list(v-if="orgUnitsStore.isLoading && !orgUnitsStore.orgUnits.length", aria-hidden="true")
     .org-unit-card(v-for="i in 3", :key="i", style="pointer-events: none;")
@@ -30,9 +37,10 @@
         UiSkeleton(width="70%", height="14px")
         UiSkeleton(width="50%", height="14px")
     
-  .page-vacancies__empty(v-else-if="orgUnitsStore.orgUnits.length === 0")
+  .page-org-units__empty(v-else-if="orgUnitsStore.orgUnits.length === 0")
     MapPin(:size="48")
     p Подразделения не найдены
+    p.page-org-units__empty-hint Попробуйте изменить параметры поиска
     
   .page-org-units__list(v-else)
     .org-unit-card(v-for="unit in orgUnitsStore.orgUnits", :key="unit.id")
@@ -193,7 +201,7 @@
 
 <script setup lang="ts">
 import { ref, reactive, computed, onMounted } from 'vue'
-import { Plus, Search, MapPin, Users, UserCheck, Trash2 } from 'lucide-vue-next'
+import { Plus, Search, X, MapPin, Users, UserCheck, Trash2 } from 'lucide-vue-next'
 import { useOrgUnitsStore } from '~/stores/org-units.store'
 import { useToast } from '~/composables/useToast'
 import { useConfirm } from '~/composables/useConfirm'
@@ -262,6 +270,12 @@ const debouncedSearch = () => {
   debounceTimer = setTimeout(() => {
     orgUnitsStore.search(searchQuery.value)
   }, 300)
+}
+
+const clearSearch = () => {
+  searchQuery.value = ''
+  if (debounceTimer) clearTimeout(debounceTimer)
+  orgUnitsStore.search('')
 }
 
 const openManagersModal = (unit: OrgUnit) => {
@@ -374,7 +388,86 @@ const createUnit = async () => {
   }
   
   &__search {
-    margin-bottom: var(--spacing-4);
+    margin-bottom: var(--spacing-6);
+  }
+
+  &__search-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+    width: 100%;
+    max-width: 480px;
+  }
+
+  &__search-icon {
+    position: absolute;
+    left: 14px;
+    color: var(--color-text-secondary);
+    pointer-events: none;
+  }
+
+  &__search-input {
+    width: 100%;
+    padding: 10px 38px 10px 38px;
+    background-color: var(--color-bg-card);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    color: var(--color-text-primary);
+    font-size: 14px;
+    outline: none;
+    transition: all 0.2s ease;
+
+    &:focus {
+      border-color: var(--color-primary);
+      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+    }
+
+    &::placeholder {
+      color: var(--color-text-muted);
+    }
+  }
+
+  &__search-clear {
+    position: absolute;
+    right: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    border: none;
+    background: transparent;
+    color: var(--color-text-secondary);
+    cursor: pointer;
+    transition: all 0.2s;
+
+    &:hover {
+      background-color: var(--color-bg-hover);
+      color: var(--color-text-primary);
+    }
+  }
+
+  &__empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 60px 0;
+    color: var(--color-text-secondary);
+    gap: 8px;
+
+    p {
+      font-size: 16px;
+      font-weight: 500;
+      color: var(--color-text-primary);
+      margin: 0;
+    }
+  }
+
+  &__empty-hint {
+    font-size: 14px;
+    color: var(--color-text-muted);
   }
   
   &__list {

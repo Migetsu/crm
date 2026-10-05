@@ -5,7 +5,9 @@ interface UpdateUserBody {
   userId: string
   role?: UserRole
   isActive?: boolean
+  is_active?: boolean
   fullName?: string
+  full_name?: string
 }
 
 export default defineEventHandler(async (event) => {
@@ -25,8 +27,12 @@ export default defineEventHandler(async (event) => {
   const authHeader = getHeader(event, 'authorization')
   if (authHeader && authHeader.startsWith('Bearer ')) {
     const token = authHeader.replace('Bearer ', '').trim()
-    const { data: authUser } = await adminClient.auth.getUser(token)
-    callerId = authUser.user?.id || null
+    try {
+      const { data: authUser } = await adminClient.auth.getUser(token)
+      callerId = authUser.user?.id || null
+    } catch {
+      callerId = null
+    }
   }
 
   if (!callerId) {
@@ -72,8 +78,13 @@ export default defineEventHandler(async (event) => {
     })
   }
 
+  // Normalize isActive boolean
+  const targetIsActive = typeof body.isActive === 'boolean'
+    ? body.isActive
+    : (typeof body.is_active === 'boolean' ? body.is_active : undefined)
+
   // 3. Hierarchy & security checks
-  if (callerId === body.userId && body.isActive === false) {
+  if (callerId === body.userId && targetIsActive === false) {
     throw createError({
       statusCode: 400,
       statusMessage: 'Вы не можете деактивировать собственную учетную запись',
@@ -99,21 +110,28 @@ export default defineEventHandler(async (event) => {
   // 4. Update public.profiles
   const profileUpdates: Record<string, unknown> = {}
   if (body.role) profileUpdates.role = body.role
-  if (typeof body.isActive === 'boolean') profileUpdates.is_active = body.isActive
-  if (body.fullName) profileUpdates.full_name = body.fullName.trim()
+  if (typeof targetIsActive === 'boolean') profileUpdates.is_active = targetIsActive
+  const targetFullName = body.fullName || body.full_name
+  if (targetFullName) profileUpdates.full_name = targetFullName.trim()
 
-  const { data: updatedProfile, error: updateError } = await adminClient
-    .from('profiles')
-    .update(profileUpdates)
-    .eq('id', body.userId)
-    .select()
-    .single()
+  let updatedProfile = targetProfile
+  if (Object.keys(profileUpdates).length > 0) {
+    const { data: updated, error: updateError } = await adminClient
+      .from('profiles')
+      .update(profileUpdates)
+      .eq('id', body.userId)
+      .select('*')
+      .maybeSingle()
 
-  if (updateError) {
-    throw createError({
-      statusCode: 500,
-      statusMessage: `Ошибка обновления профиля: ${updateError.message}`,
-    })
+    if (updateError) {
+      throw createError({
+        statusCode: 400,
+        statusMessage: `Ошибка обновления профиля: ${updateError.message}`,
+      })
+    }
+    if (updated) {
+      updatedProfile = updated
+    }
   }
 
   // 5. Synchronize with Supabase Auth (metadata and ban state)
@@ -121,14 +139,16 @@ export default defineEventHandler(async (event) => {
   if (body.role) {
     authUpdates.user_metadata = { role: body.role }
   }
-  if (typeof body.isActive === 'boolean') {
-    authUpdates.ban_duration = body.isActive ? 'none' : '876000h'
+  if (typeof targetIsActive === 'boolean') {
+    authUpdates.ban_duration = targetIsActive ? 'none' : '876000h'
   }
 
-  try {
-    await adminClient.auth.admin.updateUserById(body.userId, authUpdates)
-  } catch (err: unknown) {
-    console.warn('Supabase Auth sync warning:', err)
+  if (Object.keys(authUpdates).length > 0) {
+    try {
+      await adminClient.auth.admin.updateUserById(body.userId, authUpdates)
+    } catch (err: unknown) {
+      console.warn('Supabase Auth sync warning:', err)
+    }
   }
 
   return {

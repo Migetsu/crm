@@ -236,6 +236,7 @@ import UiSkeleton from '~/components/ui/UiSkeleton/UiSkeleton.vue'
 import { useConfirm } from '~/composables/useConfirm'
 import { ROLE_LABELS, canManageAccounts, canModifyUser, canDeleteUser } from '~/types/user.types'
 import type { UserRole, Profile } from '~/types/user.types'
+import { getErrorMessage } from '~/utils/error'
 
 const usersStore = useUsersStore()
 const authStore = useAuthStore()
@@ -388,7 +389,7 @@ const handleCreateUser = async () => {
     showCreateModal.value = false
     toast.success('Пользователь успешно создан')
   } catch (err: unknown) {
-    toast.error(err instanceof Error ? err.message : 'Ошибка при создании пользователя')
+    toast.error(getErrorMessage(err) || 'Ошибка при создании пользователя')
   } finally {
     isSubmitting.value = false
   }
@@ -408,7 +409,7 @@ const handleSaveRole = async () => {
     showRoleModal.value = false
     toast.success('Роль пользователя успешно изменена')
   } catch (err: unknown) {
-    toast.error(err instanceof Error ? err.message : 'Ошибка при смене роли')
+    toast.error(getErrorMessage(err) || 'Ошибка при смене роли')
   } finally {
     isSubmitting.value = false
   }
@@ -428,7 +429,7 @@ const confirmToggleActive = async () => {
     showToggleModal.value = false
     toast.success(willBeActive ? 'Пользователь успешно разблокирован' : 'Пользователь успешно заблокирован')
   } catch (err: unknown) {
-    toast.error(err instanceof Error ? err.message : 'Ошибка при изменении статуса')
+    toast.error(getErrorMessage(err) || 'Ошибка при изменении статуса')
   } finally {
     isSubmitting.value = false
   }
@@ -455,7 +456,7 @@ const openDeleteModal = async (u: Profile) => {
     await usersStore.deleteUser(u.id)
     toast.success('Пользователь успешно удален')
   } catch (err: unknown) {
-    toast.error(err instanceof Error ? err.message : 'Ошибка при удалении пользователя')
+    toast.error(getErrorMessage(err) || 'Ошибка при удалении пользователя')
   } finally {
     isSubmitting.value = false
   }

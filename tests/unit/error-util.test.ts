@@ -14,6 +14,17 @@ describe('getErrorMessage utility', () => {
     expect(getErrorMessage('Raw string error')).toBe('Raw string error')
   })
 
+  it('should extract statusMessage from FetchError-like objects', () => {
+    const fetchErr = {
+      message: '[POST] "/api/admin/update-user": 500',
+      data: {
+        statusCode: 500,
+        statusMessage: 'Ошибка обновления профиля: Ограничение доступа',
+      },
+    }
+    expect(getErrorMessage(fetchErr)).toBe('Ошибка обновления профиля: Ограничение доступа')
+  })
+
   it('should return default fallback for unexpected types', () => {
     expect(getErrorMessage(null)).toBe('Unknown error occurred')
     expect(getErrorMessage(12345)).toBe('Unknown error occurred')

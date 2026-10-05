@@ -83,6 +83,7 @@ import {
   normalizeTemplateNewlines,
   AVAILABLE_TEMPLATE_TAGS,
 } from '~/utils/template'
+import { getErrorMessage } from '~/utils/error'
 import type { Candidate } from '~/types/candidate.types'
 import type { Vacancy } from '~/types/vacancy.types'
 import type { Template, TemplateType } from '~/types/template.types'
@@ -308,7 +309,7 @@ const handleSend = async () => {
     isOpen.value = false
     emit('sent')
   } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : 'Не удалось отправить сообщение'
+    const message = getErrorMessage(err) || 'Не удалось отправить сообщение'
     toast.error(message)
     console.error('Send message failed:', err)
   } finally {

@@ -54,9 +54,10 @@ UiModal(v-model="isOpen", title="Изменить статус", size="lg")
       .status-modal__interview-grid
         UiSelect(
           v-model="interviewOrgUnit",
-          label="Орг. единица / филиал *",
+          :label="orgUnitSelectLabel",
           :options="orgUnitOptions",
-          placeholder="Выберите филиал"
+          placeholder="Выберите филиал",
+          searchable
         )
         UiInput(
           v-model="interviewDate",
@@ -145,10 +146,12 @@ import { ref, computed, watch, onMounted, nextTick } from 'vue'
 import { MessageSquare, Mail } from 'lucide-vue-next'
 import { useCandidatesStore } from '~/stores/candidates.store'
 import { useOrgUnitsStore } from '~/stores/org-units.store'
+import { useVacanciesStore } from '~/stores/vacancies.store'
 import { HistoryService } from '~/services/history.service'
 import { TemplatesService } from '~/services/templates.service'
 import { VacanciesService } from '~/services/vacancies.service'
 import type { Candidate, CandidateStatus } from '~/types/candidate.types'
+import type { Vacancy } from '~/types/vacancy.types'
 import type { Template, TemplateType } from '~/types/template.types'
 import {
   STATUS_LABELS, STATUS_COLORS,
@@ -157,8 +160,13 @@ import {
 import {
   interpolateTemplate,
   buildTemplateContext,
+  normalizeTemplateNewlines,
   AVAILABLE_TEMPLATE_TAGS,
 } from '~/utils/template'
+import {
+  getRelevantOrgUnits,
+  determineInterviewSelection,
+} from '~/utils/interview-org-units'
 
 const props = defineProps<{
   candidate: Candidate | null
@@ -174,6 +182,7 @@ const isOpen = defineModel<boolean>()
 const toast = useToast()
 const candidatesStore = useCandidatesStore()
 const orgUnitsStore = useOrgUnitsStore()
+const vacanciesStore = useVacanciesStore()
 const supabase = useSupabaseClient()
 const user = useSupabaseUser()
 const historyService = new HistoryService(supabase)
@@ -196,39 +205,68 @@ const selectedTemplateId = ref('')
 const notificationMessage = ref('')
 const templates = ref<Template[]>([])
 const loadedVacancyTitle = ref('')
+const candidateVacancy = ref<Vacancy | null>(null)
 const messageTextareaRef = ref<HTMLTextAreaElement | null>(null)
 
 const currentStatusLabel = computed(() => props.candidate ? STATUS_LABELS[props.candidate.status] : '')
 const currentStatusColor = computed(() => props.candidate ? STATUS_COLORS[props.candidate.status] : '')
 const currentStatusBgColor = computed(() => currentStatusColor.value + '1a')
 
+const currentVacancy = computed(() => {
+  if (!props.candidate?.vacancy_id) return null
+  return (
+    vacanciesStore.vacancies.find(v => v.id === props.candidate?.vacancy_id) ||
+    candidateVacancy.value
+  )
+})
+
 const effectiveVacancyTitle = computed(() => {
-  return props.vacancyTitle || loadedVacancyTitle.value || ''
+  return props.vacancyTitle || currentVacancy.value?.title || loadedVacancyTitle.value || ''
 })
 
 const selectedOrgUnit = computed(() => {
   return orgUnitsStore.orgUnits.find(u => u.id === interviewOrgUnit.value) || null
 })
 
-const availableStatuses = computed(() => {
-  if (!props.candidate) return []
-  const allKeys = Object.keys(STATUS_LABELS) as CandidateStatus[]
-  return allKeys
-    .filter(s => s !== props.candidate?.status)
-    .map(s => ({ value: s, label: STATUS_LABELS[s] }))
+const relevantOrgUnits = computed(() => {
+  return getRelevantOrgUnits({
+    candidateVacancyTitle: effectiveVacancyTitle.value,
+    candidateVacancy: currentVacancy.value,
+    vacancies: vacanciesStore.vacancies,
+    orgUnits: orgUnitsStore.orgUnits,
+  })
 })
 
-const toSelectOptions = (labels: Record<string, string>) => {
-  return Object.entries(labels).map(([value, label]) => ({ value, label }))
-}
-const noFeedbackOptions = toSelectOptions(NO_FEEDBACK_LABELS)
-const rejectedOptions = toSelectOptions(REJECTED_LABELS)
-const selfRejectedOptions = toSelectOptions(SELF_REJECTED_LABELS)
-const reserveOptions = toSelectOptions(RESERVE_LABELS)
+const isFilteredByVacancy = computed(() => {
+  return Boolean(effectiveVacancyTitle.value) && relevantOrgUnits.value.length < orgUnitsStore.orgUnits.length
+})
+
+const orgUnitSelectLabel = computed(() => {
+  if (isFilteredByVacancy.value) {
+    return `Орг. единица / филиал * (где открыта должность «${effectiveVacancyTitle.value}»)`
+  }
+  return 'Орг. единица / филиал *'
+})
 
 const orgUnitOptions = computed(() => {
-  return orgUnitsStore.orgUnits.map(u => ({ value: u.id, label: u.name }))
+  return relevantOrgUnits.value.map(u => ({
+    value: u.id,
+    label: `${u.name} (${u.interview_address})`,
+  }))
 })
+
+const autoSelectOrgUnitAndAddress = () => {
+  const selection = determineInterviewSelection({
+    relevantUnits: relevantOrgUnits.value,
+    currentSelection: interviewOrgUnit.value,
+    candidateVacancy: currentVacancy.value,
+  })
+
+  if (selection) {
+    interviewOrgUnit.value = selection.orgUnitId
+    interviewAddress.value = selection.interviewAddress
+  }
+}
 
 const templateSelectOptions = computed(() => {
   return templates.value.map(t => ({ value: t.id, label: t.title }))
@@ -248,7 +286,10 @@ const canSave = computed(() => {
 })
 
 onMounted(async () => {
-  await orgUnitsStore.fetchAll()
+  await Promise.all([
+    orgUnitsStore.fetchAll(),
+    vacanciesStore.fetchAll(),
+  ])
 })
 
 const switchChannel = async (channel: TemplateType) => {
@@ -295,7 +336,7 @@ const generateNotificationText = () => {
     orgUnitName: selectedOrgUnit.value?.name || '',
   })
 
-  notificationMessage.value = interpolateTemplate(tmpl.body, context)
+  notificationMessage.value = normalizeTemplateNewlines(interpolateTemplate(tmpl.body, context))
 }
 
 const insertTag = (tag: string) => {
@@ -332,9 +373,10 @@ watch([interviewDate, interviewAddress, selectedTemplateId], () => {
   }
 })
 
-// When switching to interview_scheduled, load templates and prepopulate
+// When switching to interview_scheduled, auto-select store and load templates
 watch(selectedStatus, async (newStatus) => {
   if (newStatus === 'interview_scheduled') {
+    autoSelectOrgUnitAndAddress()
     await loadChannelTemplates()
     generateNotificationText()
   }
@@ -422,27 +464,33 @@ watch(isOpen, async (val) => {
     sendNotification.value = true
     notificationChannel.value = 'sms'
 
-    if (props.candidate?.address) {
-      interviewAddress.value = props.candidate.address
-    }
-
     // Set default interview date to tomorrow 14:00
     const tomorrow = new Date()
     tomorrow.setDate(tomorrow.getDate() + 1)
     tomorrow.setHours(14, 0, 0, 0)
     interviewDate.value = tomorrow.toISOString().slice(0, 16)
 
-    // Preload vacancy title if vacancy_id is present
-    if (props.candidate?.vacancy_id && !props.vacancyTitle) {
+    // Preload candidate's vacancy and stores
+    await Promise.all([
+      orgUnitsStore.fetchAll(),
+      vacanciesStore.fetchAll(),
+    ])
+
+    if (props.candidate?.vacancy_id) {
       try {
         const v = await vacanciesService.fetchById(props.candidate.vacancy_id)
-        if (v) loadedVacancyTitle.value = v.title
+        if (v) {
+          candidateVacancy.value = v
+          loadedVacancyTitle.value = v.title
+        }
       } catch {
+        candidateVacancy.value = null
         loadedVacancyTitle.value = ''
       }
     }
 
     if (selectedStatus.value === 'interview_scheduled') {
+      autoSelectOrgUnitAndAddress()
       await loadChannelTemplates()
       generateNotificationText()
     }

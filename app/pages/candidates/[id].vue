@@ -275,6 +275,7 @@
   CandidateStatusModal(
     v-model="showStatusModal",
     :candidate="candidate",
+    :vacancy-title="vacancy?.title",
     @updated="refreshData"
   )
   

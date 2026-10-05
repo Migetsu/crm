@@ -80,6 +80,7 @@ import {
   interpolateTemplate,
   extractTemplateVariables,
   buildTemplateContext,
+  normalizeTemplateNewlines,
   AVAILABLE_TEMPLATE_TAGS,
 } from '~/utils/template'
 import type { Candidate } from '~/types/candidate.types'
@@ -205,15 +206,16 @@ const canSend = computed(() => {
 
 const applyTemplateVariables = () => {
   if (!activeTemplate.value) return
+  const fallbackAddress = props.vacancy?.org_unit_address || props.candidate?.address || 'г. Москва, ул. Ленина, д. 10'
   const context = buildTemplateContext({
     candidate: props.candidate,
     vacancyTitle: props.vacancy?.title || '',
-    interviewAddress: props.candidate?.address || '',
+    interviewAddress: fallbackAddress,
     recruiterPhone: '+7 (800) 555-35-35',
     customVariables: variableValues.value,
   })
 
-  messageBody.value = interpolateTemplate(activeTemplate.value.body, context)
+  messageBody.value = normalizeTemplateNewlines(interpolateTemplate(activeTemplate.value.body, context))
 }
 
 const insertTag = (tag: string) => {
@@ -244,11 +246,13 @@ watch(selectedTemplateId, (newId) => {
   // Prepopulate variables
   const tomorrow = new Date()
   tomorrow.setDate(tomorrow.getDate() + 1)
+  const defaultAddress = props.vacancy?.org_unit_address || props.candidate?.address || 'г. Москва, ул. Ленина, д. 10'
+
   variableValues.value['ДатаИнтервью'] = tomorrow.toLocaleDateString('ru-RU') + ' в 14:00'
   variableValues.value['дата'] = tomorrow.toLocaleDateString('ru-RU')
   variableValues.value['время'] = '14:00'
-  variableValues.value['АдресИнтервью'] = props.candidate?.address || ''
-  variableValues.value['адрес'] = props.candidate?.address || ''
+  variableValues.value['АдресИнтервью'] = defaultAddress
+  variableValues.value['адрес'] = defaultAddress
 
   applyTemplateVariables()
 })

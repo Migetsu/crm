@@ -1,5 +1,6 @@
 import { getSupabaseAdminClient } from '../../utils/supabase-admin'
 import { sendEmailMessage } from '../../utils/email-gateway'
+import { renderBrandedEmailHtml, normalizeNewlines } from '../../utils/email-template'
 
 interface SendEmailBody {
   candidateId: string
@@ -31,12 +32,21 @@ export default defineEventHandler(async (event) => {
     callerId = authUser.user?.id || null
   }
 
-  // 2. Dispatch through email gateway
+  // 2. Normalize text and generate branded corporate HTML template
+  const cleanSubject = body.subject.trim()
+  const cleanText = normalizeNewlines(body.text.trim())
+  const brandedHtml = body.html || renderBrandedEmailHtml({
+    subject: cleanSubject,
+    text: cleanText,
+    recipientEmail: body.to.trim(),
+  })
+
+  // 3. Dispatch through email gateway
   const result = await sendEmailMessage({
     to: body.to.trim(),
-    subject: body.subject.trim(),
-    text: body.text.trim(),
-    html: body.html,
+    subject: cleanSubject,
+    text: cleanText,
+    html: brandedHtml,
   })
 
   // 3. Record interaction in candidate history

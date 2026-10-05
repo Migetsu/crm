@@ -130,6 +130,17 @@ export const buildTemplateContext = (options: TemplateContextOptions): Record<st
 }
 
 /**
+ * Normalizes all escaped and literal newlines to standard LF (\n).
+ */
+export const normalizeTemplateNewlines = (text: string): string => {
+  if (!text) return ''
+  return text
+    .replace(/\\r\\n/g, '\n')
+    .replace(/\\n/g, '\n')
+    .replace(/\r\n/g, '\n')
+}
+
+/**
  * Replaces both single {variable} and double {{variable}} placeholders in template string with values from context.
  * Performs case-insensitive matching fallback if exact key is not found.
  */
@@ -139,6 +150,8 @@ export const interpolateTemplate = (
 ): string => {
   if (!template) return ''
 
+  const cleanTemplate = normalizeTemplateNewlines(template)
+
   // Build lowercase lookup map for case-insensitive fallback
   const lowerMap: Record<string, string> = {}
   for (const [k, v] of Object.entries(context)) {
@@ -147,7 +160,7 @@ export const interpolateTemplate = (
     }
   }
 
-  return template.replace(/\{{1,2}\s*([\w\u0400-\u04FF._-]+)\s*\}{1,2}/g, (match, key) => {
+  return cleanTemplate.replace(/\{{1,2}\s*([\w\u0400-\u04FF._-]+)\s*\}{1,2}/g, (match, key) => {
     // 1. Direct match
     const directVal = context[key]
     if (directVal !== undefined && directVal !== null) {

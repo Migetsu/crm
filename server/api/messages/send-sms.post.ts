@@ -1,5 +1,6 @@
 import { getSupabaseAdminClient } from '../../utils/supabase-admin'
 import { sendSmsMessage } from '../../utils/sms-gateway'
+import { normalizeNewlines } from '../../utils/email-template'
 
 interface SendSmsBody {
   candidateId: string
@@ -30,9 +31,10 @@ export default defineEventHandler(async (event) => {
   }
 
   // 2. Dispatch through SMS gateway
+  const cleanText = normalizeNewlines(body.text.trim())
   const result = await sendSmsMessage({
     phone: body.phone.trim(),
-    text: body.text.trim(),
+    text: cleanText,
   })
 
   // 3. Record interaction in candidate history

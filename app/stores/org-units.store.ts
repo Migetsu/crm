@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import { OrgUnitsService } from '~/services/org-units.service'
-import type { OrgUnit } from '~/types/org-unit.types'
+import type { OrgUnit, OrgUnitManager } from '~/types/org-unit.types'
 import { getErrorMessage } from '~/utils/error'
 
 export const useOrgUnitsStore = defineStore('orgUnits', () => {
@@ -67,6 +67,43 @@ export const useOrgUnitsStore = defineStore('orgUnits', () => {
     }
   }
 
+  const addManager = async (manager: Omit<OrgUnitManager, 'id'>): Promise<OrgUnitManager | null> => {
+    isLoading.value = true
+    error.value = null
+    try {
+      const created = await service.addManager(manager)
+      const unit = orgUnits.value.find(u => u.id === manager.org_unit_id)
+      if (unit) {
+        if (!unit.managers) unit.managers = []
+        unit.managers.push(created)
+      }
+      return created
+    } catch (e: unknown) {
+      error.value = getErrorMessage(e)
+      return null
+    } finally {
+      isLoading.value = false
+    }
+  }
+
+  const removeManager = async (orgUnitId: string, managerId: string): Promise<boolean> => {
+    isLoading.value = true
+    error.value = null
+    try {
+      await service.removeManager(managerId)
+      const unit = orgUnits.value.find(u => u.id === orgUnitId)
+      if (unit && unit.managers) {
+        unit.managers = unit.managers.filter(m => m.id !== managerId)
+      }
+      return true
+    } catch (e: unknown) {
+      error.value = getErrorMessage(e)
+      return false
+    } finally {
+      isLoading.value = false
+    }
+  }
+
   return {
     orgUnits,
     isLoading,
@@ -75,5 +112,7 @@ export const useOrgUnitsStore = defineStore('orgUnits', () => {
     create,
     update,
     search,
+    addManager,
+    removeManager,
   }
 })

@@ -22,6 +22,15 @@ export interface OrgUnit {
   timezone: string
   actual_location: string | null
   created_at: string
+  managers?: OrgUnitManager[]
+}
+
+export type ManagerRole = 'director' | 'hr' | 'manager'
+
+export const MANAGER_ROLE_LABELS: Record<ManagerRole, string> = {
+  director: 'Директор филиала',
+  hr: 'HR-менеджер',
+  manager: 'Управляющий',
 }
 
 export interface OrgUnitManager {
@@ -30,4 +39,5 @@ export interface OrgUnitManager {
   full_name: string
   email: string
   phone: string
+  role?: ManagerRole | string
 }

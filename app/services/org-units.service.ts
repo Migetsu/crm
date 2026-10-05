@@ -7,33 +7,33 @@ export class OrgUnitsService {
   async fetchAll(): Promise<OrgUnit[]> {
     const { data, error } = await this.supabase
       .from('org_units')
-      .select('*')
+      .select('*, managers:org_unit_managers(*)')
       .order('name')
 
     if (error) throw error
-    return data || []
+    return (data || []) as OrgUnit[]
   }
 
   async fetchById(id: string): Promise<OrgUnit> {
     const { data, error } = await this.supabase
       .from('org_units')
-      .select('*')
+      .select('*, managers:org_unit_managers(*)')
       .eq('id', id)
       .single()
 
     if (error) throw error
-    return data
+    return data as OrgUnit
   }
 
   async create(payload: Omit<OrgUnit, 'id' | 'created_at'>): Promise<OrgUnit> {
     const { data, error } = await this.supabase
       .from('org_units')
       .insert(payload)
-      .select()
+      .select('*, managers:org_unit_managers(*)')
       .single()
 
     if (error) throw error
-    return data
+    return data as OrgUnit
   }
 
   async update(id: string, payload: Partial<OrgUnit>): Promise<OrgUnit> {
@@ -41,11 +41,11 @@ export class OrgUnitsService {
       .from('org_units')
       .update(payload)
       .eq('id', id)
-      .select()
+      .select('*, managers:org_unit_managers(*)')
       .single()
 
     if (error) throw error
-    return data
+    return data as OrgUnit
   }
 
   async search(query: string): Promise<OrgUnit[]> {
@@ -53,12 +53,12 @@ export class OrgUnitsService {
 
     const { data, error } = await this.supabase
       .from('org_units')
-      .select('*')
+      .select('*, managers:org_unit_managers(*)')
       .or(`name.ilike.%${query}%,interview_address.ilike.%${query}%`)
       .order('name')
 
     if (error) throw error
-    return data || []
+    return (data || []) as OrgUnit[]
   }
 
   async fetchManagers(orgUnitId: string): Promise<OrgUnitManager[]> {

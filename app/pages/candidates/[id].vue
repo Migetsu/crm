@@ -9,7 +9,7 @@
         template(#icon)
           Edit(:size="15")
         | Редактировать
-      UiButton(variant="danger", size="sm", @click="handleDeleteCandidate")
+      UiButton(v-if="permissions.canRemoveCandidate.value", variant="danger", size="sm", @click="handleDeleteCandidate")
         template(#icon)
           Trash2(:size="15")
         | Удалить кандидата
@@ -376,6 +376,7 @@ const router = useRouter()
 const candidatesStore = useCandidatesStore()
 const toast = useToast()
 const confirm = useConfirm()
+const permissions = useRolePermissions()
 const supabase = useSupabaseClient()
 const user = useSupabaseUser()
 const vacanciesService = new VacanciesService(supabase)

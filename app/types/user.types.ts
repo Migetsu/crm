@@ -58,3 +58,27 @@ export const canDeleteUser = (callerRole?: string | null, targetRole?: string | 
   return false
 }
 
+export const canViewVacancies = (role?: string | null): boolean => {
+  return role === 'operator_director' || role === 'admin' || role === 'superadmin'
+}
+
+export const canViewOrgUnits = (role?: string | null): boolean => {
+  return role === 'operator_director' || role === 'admin' || role === 'superadmin'
+}
+
+export const canToggleVacancy = (role?: string | null): boolean => {
+  return role === 'operator_director' || role === 'admin' || role === 'superadmin'
+}
+
+export const canCreateVacancy = (role?: string | null): boolean => {
+  return role === 'admin' || role === 'superadmin'
+}
+
+export const canCreateOrgUnit = (role?: string | null): boolean => {
+  return role === 'admin' || role === 'superadmin'
+}
+
+export const canDeleteCandidate = (role?: string | null): boolean => {
+  return role === 'admin' || role === 'superadmin'
+}
+

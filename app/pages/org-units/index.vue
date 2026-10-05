@@ -4,7 +4,7 @@
     div
       h1.page-title Организационные единицы
       p.page-subtitle Филиалы, торговые точки и закрепленные менеджеры
-    UiButton(variant="primary", @click="showCreateModal = true")
+    UiButton(v-if="permissions.canAddNewOrgUnit.value", variant="primary", @click="showCreateModal = true")
       template(#icon)
         Plus(:size="18")
       | Добавить подразделение
@@ -212,6 +212,7 @@ import { getManagerRoleLabel } from '~/utils/manager-roles'
 const orgUnitsStore = useOrgUnitsStore()
 const toast = useToast()
 const confirm = useConfirm()
+const permissions = useRolePermissions()
 const searchQuery = ref('')
 const showCreateModal = ref(false)
 const showManagersModal = ref(false)

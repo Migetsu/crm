@@ -4,7 +4,7 @@
     .page-vacancies__headline
       h1.page-title Вакансии
       p.page-vacancies__subtitle Управление штатным расписанием, филиалами и потоком соискателей
-    UiButton(variant="primary", @click="openCreateModal")
+    UiButton(v-if="permissions.canAddNewVacancy.value", variant="primary", @click="openCreateModal")
       template(#icon)
         Plus(:size="18")
       | Добавить вакансию
@@ -98,6 +98,7 @@
         NuxtLink.vacancy-card__funnel-btn(:to="`/vacancies/${v.id}`")
           | Воронка вакансии ▶
         UiButton(
+          v-if="permissions.canToggleVacancyStatus.value",
           :variant="v.is_open ? 'secondary' : 'primary'",
           size="sm",
           @click="toggleVacancy(v)"
@@ -162,6 +163,7 @@ import type { Vacancy } from '~/types/vacancy.types'
 const vacanciesStore = useVacanciesStore()
 const orgUnitsStore = useOrgUnitsStore()
 const toast = useToast()
+const permissions = useRolePermissions()
 
 const searchQuery = ref('')
 const selectedOrgUnitFilter = ref('')

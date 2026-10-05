@@ -28,11 +28,11 @@ aside.app-sidebar(:class="{ 'app-sidebar--collapsed': isCollapsed }")
         Users(:size="18")
         span.app-sidebar__link-text(v-if="!isCollapsed") Витрина кандидатов
         
-      NuxtLink.app-sidebar__link(to="/vacancies", active-class="app-sidebar__link--active", v-if="filteredMenuContains('Вакансии')")
+      NuxtLink.app-sidebar__link(to="/vacancies", active-class="app-sidebar__link--active", v-if="canSeeVacancies && filteredMenuContains('Вакансии')")
         Briefcase(:size="18")
         span.app-sidebar__link-text(v-if="!isCollapsed") Вакансии
         
-      NuxtLink.app-sidebar__link(to="/org-units", active-class="app-sidebar__link--active", v-if="filteredMenuContains('Орг единицы')")
+      NuxtLink.app-sidebar__link(to="/org-units", active-class="app-sidebar__link--active", v-if="canSeeOrgUnits && filteredMenuContains('Орг единицы')")
         MapPin(:size="18")
         span.app-sidebar__link-text(v-if="!isCollapsed") Орг единицы
         
@@ -85,6 +85,7 @@ import {
 import UiAccordion from '~/components/ui/UiAccordion/UiAccordion.vue'
 
 const authStore = useAuthStore()
+const { canSeeVacancies, canSeeOrgUnits, canSeeAdminUsers } = useRolePermissions()
 const isCollapsed = useLocalStorage('crm-sidebar-collapsed', false)
 const searchQuery = ref('')
 
@@ -92,17 +93,10 @@ const toggleCollapse = () => {
   isCollapsed.value = !isCollapsed.value
 }
 
-// Проверка роли пользователя
-const userRole = computed(() => authStore.profile?.role || 'operator')
-
-const hasAdminAccess = computed(() => {
-  return ['admin', 'superadmin'].includes(userRole.value)
-})
-
 // Отображение групп
 const shouldShowGroup = (group: string) => {
-  if (group === 'admin') return hasAdminAccess.value
-  return true // Остальные группы доступны всем ролям по ТЗ
+  if (group === 'admin') return canSeeAdminUsers.value
+  return true
 }
 
 // Фильтрация меню

@@ -7,6 +7,12 @@ import {
   canCreateAdmins,
   canModifyUser,
   canDeleteUser,
+  canViewVacancies,
+  canViewOrgUnits,
+  canToggleVacancy,
+  canCreateVacancy,
+  canCreateOrgUnit,
+  canDeleteCandidate,
 } from '~/types/user.types'
 
 describe('User Types & Permissions', () => {
@@ -73,5 +79,53 @@ describe('User Types & Permissions', () => {
     // Operator cannot delete anyone
     expect(canDeleteUser('operator', 'operator', false)).toBe(false)
     expect(canDeleteUser(null, 'operator', false)).toBe(false)
+  })
+
+  it('should correctly check canViewVacancies permissions', () => {
+    expect(canViewVacancies('operator')).toBe(false)
+    expect(canViewVacancies(null)).toBe(false)
+    expect(canViewVacancies('operator_director')).toBe(true)
+    expect(canViewVacancies('admin')).toBe(true)
+    expect(canViewVacancies('superadmin')).toBe(true)
+  })
+
+  it('should correctly check canViewOrgUnits permissions', () => {
+    expect(canViewOrgUnits('operator')).toBe(false)
+    expect(canViewOrgUnits(null)).toBe(false)
+    expect(canViewOrgUnits('operator_director')).toBe(true)
+    expect(canViewOrgUnits('admin')).toBe(true)
+    expect(canViewOrgUnits('superadmin')).toBe(true)
+  })
+
+  it('should correctly check canToggleVacancy permissions', () => {
+    expect(canToggleVacancy('operator')).toBe(false)
+    expect(canToggleVacancy(null)).toBe(false)
+    expect(canToggleVacancy('operator_director')).toBe(true)
+    expect(canToggleVacancy('admin')).toBe(true)
+    expect(canToggleVacancy('superadmin')).toBe(true)
+  })
+
+  it('should correctly check canCreateVacancy permissions', () => {
+    expect(canCreateVacancy('operator')).toBe(false)
+    expect(canCreateVacancy('operator_director')).toBe(false)
+    expect(canCreateVacancy(null)).toBe(false)
+    expect(canCreateVacancy('admin')).toBe(true)
+    expect(canCreateVacancy('superadmin')).toBe(true)
+  })
+
+  it('should correctly check canCreateOrgUnit permissions', () => {
+    expect(canCreateOrgUnit('operator')).toBe(false)
+    expect(canCreateOrgUnit('operator_director')).toBe(false)
+    expect(canCreateOrgUnit(null)).toBe(false)
+    expect(canCreateOrgUnit('admin')).toBe(true)
+    expect(canCreateOrgUnit('superadmin')).toBe(true)
+  })
+
+  it('should correctly check canDeleteCandidate permissions', () => {
+    expect(canDeleteCandidate('operator')).toBe(false)
+    expect(canDeleteCandidate('operator_director')).toBe(false)
+    expect(canDeleteCandidate(null)).toBe(false)
+    expect(canDeleteCandidate('admin')).toBe(true)
+    expect(canDeleteCandidate('superadmin')).toBe(true)
   })
 })

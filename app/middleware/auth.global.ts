@@ -16,4 +16,16 @@ export default defineNuxtRouteMiddleware(async (to) => {
   if (user.value && !authStore.profile) {
     await authStore.fetchProfile()
   }
+
+  const role = authStore.profile?.role || 'operator'
+
+  // Admin routes: only admin and superadmin
+  if (to.path.startsWith('/admin') && !['admin', 'superadmin'].includes(role)) {
+    return navigateTo('/')
+  }
+
+  // Vacancies and Org Units: operator_director, admin, superadmin only
+  if ((to.path.startsWith('/vacancies') || to.path.startsWith('/org-units')) && role === 'operator') {
+    return navigateTo('/')
+  }
 })

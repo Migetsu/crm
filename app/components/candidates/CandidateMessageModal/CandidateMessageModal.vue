@@ -7,6 +7,12 @@ UiModal(v-model="isOpen", :title="modalTitle", size="md")
         strong Получатель: 
         | {{ candidateFullName }} ({{ recipientContact }})
 
+    .message-modal__gateway-badge(v-if="currentGatewayInfo")
+      component(:is="currentGatewayInfo.isConfigured ? CheckCircle2 : Info", :size="14")
+      span.message-modal__gateway-text
+        strong {{ currentGatewayInfo.label }}: 
+        | {{ currentGatewayInfo.description }}
+
     UiSelect(
       v-model="selectedTemplateId",
       label="Шаблон сообщения",
@@ -68,9 +74,8 @@ UiModal(v-model="isOpen", :title="modalTitle", size="md")
 
 <script setup lang="ts">
 import { ref, computed, watch, nextTick } from 'vue'
-import { Phone, Mail, Send } from 'lucide-vue-next'
+import { Phone, Mail, Send, CheckCircle2, Info } from 'lucide-vue-next'
 import { TemplatesService } from '~/services/templates.service'
-import { HistoryService } from '~/services/history.service'
 import {
   interpolateTemplate,
   extractTemplateVariables,
@@ -80,6 +85,20 @@ import {
 import type { Candidate } from '~/types/candidate.types'
 import type { Vacancy } from '~/types/vacancy.types'
 import type { Template, TemplateType } from '~/types/template.types'
+
+interface GatewaysStatusResponse {
+  email: {
+    provider: 'smtp' | 'mock'
+    configured: boolean
+    host: string | null
+    user: string | null
+    from: string | null
+  }
+  sms: {
+    provider: 'sms_ru' | 'mock'
+    configured: boolean
+  }
+}
 
 const props = defineProps<{
   type: TemplateType
@@ -93,10 +112,8 @@ const emit = defineEmits<{
 
 const isOpen = defineModel<boolean>()
 const supabase = useSupabaseClient()
-const user = useSupabaseUser()
 const toast = useToast()
 const templatesService = new TemplatesService(supabase)
-const historyService = new HistoryService(supabase)
 
 const templates = ref<Template[]>([])
 const selectedTemplateId = ref('')
@@ -105,6 +122,38 @@ const messageBody = ref('')
 const isSubmitting = ref(false)
 const variableValues = ref<Record<string, string>>({})
 const textareaRef = ref<HTMLTextAreaElement | null>(null)
+const gatewaysStatus = ref<GatewaysStatusResponse | null>(null)
+
+const loadGatewaysStatus = async () => {
+  try {
+    gatewaysStatus.value = await $fetch<GatewaysStatusResponse>('/api/messages/gateways-status')
+  } catch (err) {
+    console.warn('Failed to load gateways status:', err)
+  }
+}
+
+const currentGatewayInfo = computed(() => {
+  if (!gatewaysStatus.value) return null
+  if (props.type === 'sms') {
+    const isConfigured = gatewaysStatus.value.sms.configured
+    return {
+      isConfigured,
+      label: isConfigured ? 'Шлюз: SMS.ru (Активен)' : 'Шлюз: Эмуляция (Mock)',
+      description: isConfigured
+        ? 'Реальная отправка через SMS.ru'
+        : 'Тестовый режим с сохранением в историю',
+    }
+  } else {
+    const isConfigured = gatewaysStatus.value.email.configured
+    return {
+      isConfigured,
+      label: isConfigured ? `Шлюз: SMTP (${gatewaysStatus.value.email.host})` : 'Шлюз: Эмуляция (Mock)',
+      description: isConfigured
+        ? `Отправка с ${gatewaysStatus.value.email.from || gatewaysStatus.value.email.user}`
+        : 'Тестовый режим с сохранением в историю',
+    }
+  }
+})
 
 const modalTitle = computed(() => {
   return props.type === 'sms' ? 'Отправить SMS кандидату' : 'Отправить Email кандидату'
@@ -218,31 +267,46 @@ const handleSend = async () => {
 
   isSubmitting.value = true
   try {
-    const title = props.type === 'sms'
-      ? (activeTemplate.value ? `SMS: «${activeTemplate.value.title}»` : 'Отправлено SMS')
-      : (subject.value ? `Email: ${subject.value}` : 'Отправлен Email')
+    const session = await supabase.auth.getSession()
+    const token = session.data.session?.access_token
 
-    await historyService.create({
-      candidate_id: props.candidate.id,
-      type: props.type,
-      title,
-      body: messageBody.value.trim(),
-      created_by: user.value?.id || null,
-      meta: {
-        template_id: selectedTemplateId.value || null,
-        recipient: props.type === 'sms' ? props.candidate.phone : props.candidate.email,
-        phone: props.candidate.phone,
-        email: props.candidate.email,
-        subject: props.type === 'email' ? subject.value.trim() : null,
-      },
-    })
+    if (props.type === 'sms') {
+      const res = await $fetch<{ success: boolean; provider: string; details?: string }>('/api/messages/send-sms', {
+        method: 'POST',
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+        body: {
+          candidateId: props.candidate.id,
+          phone: props.candidate.phone,
+          text: messageBody.value.trim(),
+          templateId: selectedTemplateId.value || undefined,
+        },
+      })
+
+      const modeHint = res.provider === 'mock' ? ' (тестовый режим)' : ''
+      toast.success(`SMS успешно отправлено${modeHint}`)
+    } else {
+      const res = await $fetch<{ success: boolean; provider: string; details?: string }>('/api/messages/send-email', {
+        method: 'POST',
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+        body: {
+          candidateId: props.candidate.id,
+          to: props.candidate.email,
+          subject: subject.value.trim(),
+          text: messageBody.value.trim(),
+          templateId: selectedTemplateId.value || undefined,
+        },
+      })
+
+      const modeHint = res.provider === 'mock' ? ' (тестовый режим)' : ''
+      toast.success(`Email успешно отправлен${modeHint}`)
+    }
 
     isOpen.value = false
     emit('sent')
-    toast.success(props.type === 'sms' ? 'SMS-сообщение кандидату отправлено' : 'Email кандидату отправлен')
   } catch (err: unknown) {
-    toast.error('Не удалось отправить сообщение')
-    console.error(err)
+    const message = err instanceof Error ? err.message : 'Не удалось отправить сообщение'
+    toast.error(message)
+    console.error('Send message failed:', err)
   } finally {
     isSubmitting.value = false
   }
@@ -254,7 +318,7 @@ watch(isOpen, async (val) => {
     subject.value = ''
     messageBody.value = ''
     variableValues.value = {}
-    await loadTemplates()
+    await Promise.all([loadTemplates(), loadGatewaysStatus()])
   }
 })
 </script>
@@ -280,6 +344,24 @@ watch(isOpen, async (val) => {
     font-size: 13px;
     strong {
       color: var(--color-text-primary);
+    }
+  }
+
+  &__gateway-badge {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    background-color: var(--color-bg-secondary);
+    border: 1px dashed var(--color-border);
+    border-radius: var(--radius-md);
+    font-size: 12px;
+    color: var(--color-text-secondary);
+  }
+
+  &__gateway-text {
+    strong {
+      color: var(--color-primary);
     }
   }
 

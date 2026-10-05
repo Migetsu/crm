@@ -4,7 +4,7 @@
     .page-vacancies__headline
       h1.page-title Вакансии
       p.page-vacancies__subtitle Управление штатным расписанием, филиалами и потоком соискателей
-    UiButton(variant="primary", @click="showCreateModal = true")
+    UiButton(variant="primary", @click="openCreateModal")
       template(#icon)
         Plus(:size="18")
       | Добавить вакансию
@@ -104,9 +104,30 @@
         ) {{ v.is_open ? 'Закрыть' : 'Открыть' }}
 
   //- Create vacancy modal
-  UiModal(v-model="showCreateModal", title="Создать вакансию", size="md")
+  UiModal(v-model="showCreateModal", title="Создать вакансию", size="lg")
     .vacancy-form
-      UiInput(v-model="newVacancy.title", label="Название вакансии *", placeholder="Например, Кассир-продавец")
+      .vacancy-presets
+        .vacancy-presets__header
+          span.vacancy-presets__title Готовые шаблоны должностей:
+          span.vacancy-presets__hint Нажмите для быстрого заполнения
+        .vacancy-presets__list
+          button.vacancy-presets__chip(
+            v-for="preset in VACANCY_PRESETS"
+            :key="preset.id"
+            type="button"
+            :class="{ 'vacancy-presets__chip--active': activePresetId === preset.id }"
+            @click="selectPreset(preset)"
+          )
+            span.vacancy-presets__chip-dot
+            | {{ preset.title }}
+          button.vacancy-presets__chip.vacancy-presets__chip--clear(
+            v-if="activePresetId"
+            type="button"
+            @click="clearPreset"
+          )
+            | ✕ Сбросить
+
+      UiInput(v-model="newVacancy.title", label="Название вакансии *", placeholder="Например, Продавец-кассир")
       UiSelect(
         v-model="newVacancy.org_unit_id",
         label="Филиал / Подразделение *",
@@ -114,11 +135,29 @@
         placeholder="Выберите филиал",
         searchable
       )
-      UiInput(v-model="newVacancy.description", label="Краткое описание", placeholder="О проекте, задачах...")
-      UiInput(v-model="newVacancy.requirements", label="Требования к соискателю", placeholder="Опыт, навыки, образование...")
-      UiInput(v-model="newVacancy.responsibilities", label="Обязанности", placeholder="Что предстоит делать...")
+      .vacancy-form__field
+        label.vacancy-form__label Краткое описание
+        textarea.vacancy-form__textarea(
+          v-model="newVacancy.description"
+          rows="3"
+          placeholder="О проекте, задачах..."
+        )
+      .vacancy-form__field
+        label.vacancy-form__label Требования к соискателю
+        textarea.vacancy-form__textarea(
+          v-model="newVacancy.requirements"
+          rows="4"
+          placeholder="Опыт, навыки, образование..."
+        )
+      .vacancy-form__field
+        label.vacancy-form__label Обязанности
+        textarea.vacancy-form__textarea(
+          v-model="newVacancy.responsibilities"
+          rows="5"
+          placeholder="Что предстоит делать..."
+        )
     template(#footer)
-      UiButton(variant="secondary", @click="showCreateModal = false") Отмена
+      UiButton(variant="secondary", @click="closeCreateModal") Отмена
       UiButton(variant="primary", @click="createVacancy", :disabled="!newVacancy.title.trim() || isSubmitting")
         | {{ isSubmitting ? 'Создание...' : 'Создать вакансию' }}
 </template>
@@ -130,6 +169,7 @@ import { useVacanciesStore } from '~/stores/vacancies.store'
 import { useOrgUnitsStore } from '~/stores/org-units.store'
 import { useToast } from '~/composables/useToast'
 import UiSkeleton from '~/components/ui/UiSkeleton/UiSkeleton.vue'
+import { VACANCY_PRESETS, type VacancyPreset } from '~/data/vacancy-presets'
 import type { Vacancy } from '~/types/vacancy.types'
 
 const vacanciesStore = useVacanciesStore()
@@ -141,6 +181,7 @@ const selectedOrgUnitFilter = ref('')
 const selectedStatusFilter = ref('all')
 const showCreateModal = ref(false)
 const isSubmitting = ref(false)
+const activePresetId = ref<string | null>(null)
 let debounceTimer: ReturnType<typeof setTimeout> | null = null
 
 const newVacancy = reactive({
@@ -150,6 +191,37 @@ const newVacancy = reactive({
   responsibilities: '',
   org_unit_id: '',
 })
+
+const selectPreset = (preset: VacancyPreset) => {
+  activePresetId.value = preset.id
+  newVacancy.title = preset.title
+  newVacancy.description = preset.description
+  newVacancy.requirements = preset.requirements
+  newVacancy.responsibilities = preset.responsibilities
+}
+
+const clearPreset = () => {
+  activePresetId.value = null
+  newVacancy.title = ''
+  newVacancy.description = ''
+  newVacancy.requirements = ''
+  newVacancy.responsibilities = ''
+}
+
+const resetForm = () => {
+  clearPreset()
+  newVacancy.org_unit_id = ''
+}
+
+const openCreateModal = () => {
+  resetForm()
+  showCreateModal.value = true
+}
+
+const closeCreateModal = () => {
+  showCreateModal.value = false
+  resetForm()
+}
 
 const orgUnitFilterOptions = computed(() => {
   return [
@@ -214,11 +286,7 @@ const createVacancy = async () => {
     if (res) {
       toast.success('Вакансия успешно создана')
       showCreateModal.value = false
-      newVacancy.title = ''
-      newVacancy.description = ''
-      newVacancy.requirements = ''
-      newVacancy.responsibilities = ''
-      newVacancy.org_unit_id = ''
+      resetForm()
     } else {
       toast.error('Не удалось создать вакансию')
     }
@@ -483,9 +551,127 @@ const createVacancy = async () => {
   }
 }
 
+.vacancy-presets {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px 14px;
+  background-color: var(--color-bg-body);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+
+  &__header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  &__title {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--color-text-primary);
+  }
+
+  &__hint {
+    font-size: 12px;
+    color: var(--color-text-muted);
+  }
+
+  &__list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  &__chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    border-radius: var(--radius-md);
+    background-color: var(--color-bg-card);
+    border: 1px solid var(--color-border);
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--color-text-secondary);
+    cursor: pointer;
+    transition: all 0.2s;
+
+    &:hover {
+      border-color: var(--color-primary);
+      color: var(--color-primary);
+      background-color: rgba(59, 130, 246, 0.05);
+    }
+
+    &--active {
+      border-color: var(--color-primary);
+      background-color: rgba(59, 130, 246, 0.12);
+      color: var(--color-primary);
+      font-weight: 600;
+
+      .vacancy-presets__chip-dot {
+        background-color: var(--color-primary);
+      }
+    }
+
+    &--clear {
+      color: var(--color-text-muted);
+      border-style: dashed;
+
+      &:hover {
+        border-color: #ef4444;
+        color: #ef4444;
+        background-color: rgba(239, 68, 68, 0.05);
+      }
+    }
+  }
+
+  &__chip-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background-color: var(--color-text-muted);
+    transition: background-color 0.2s;
+  }
+}
+
 .vacancy-form {
   display: flex;
   flex-direction: column;
   gap: 16px;
+
+  &__field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  &__label {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--color-text-secondary);
+  }
+
+  &__textarea {
+    width: 100%;
+    padding: 10px 12px;
+    background-color: var(--color-bg-body);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    color: var(--color-text-primary);
+    font-size: 13px;
+    line-height: 1.5;
+    resize: vertical;
+    font-family: inherit;
+
+    &:focus {
+      outline: none;
+      border-color: var(--color-primary);
+    }
+
+    &::placeholder {
+      color: var(--color-text-muted);
+    }
+  }
 }
 </style>

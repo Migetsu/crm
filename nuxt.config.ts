@@ -20,6 +20,9 @@ export default defineNuxtConfig({
   css: [
     '~/assets/scss/main.scss'
   ],
+  runtimeConfig: {
+    supabaseServiceRoleKey: process.env.SUPABASE_SERVICE_ROLE_KEY,
+  },
   compatibilityDate: '2024-11-01',
   devtools: { enabled: true }
 })

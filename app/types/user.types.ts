@@ -6,6 +6,7 @@ export interface User {
   role: UserRole
   fullName: string
   createdAt: string
+  isActive?: boolean
 }
 
 export interface Profile {
@@ -14,6 +15,7 @@ export interface Profile {
   full_name: string
   role: UserRole
   theme?: string
+  is_active?: boolean
   created_at: string
 }
 
@@ -27,3 +29,20 @@ export const ROLE_LABELS: Record<UserRole, string> = {
 
 export const CAN_MANAGE_ACCOUNTS: UserRole[] = ['admin', 'superadmin']
 export const CAN_CREATE_ADMINS: UserRole[] = ['superadmin']
+
+export const canManageAccounts = (role?: string | null): boolean => {
+  return role === 'admin' || role === 'superadmin'
+}
+
+export const canCreateAdmins = (role?: string | null): boolean => {
+  return role === 'superadmin'
+}
+
+export const canModifyUser = (callerRole?: string | null, targetRole?: string | null): boolean => {
+  if (!callerRole) return false
+  if (callerRole === 'superadmin') return true
+  if (callerRole === 'admin') {
+    return targetRole === 'operator' || targetRole === 'operator_director'
+  }
+  return false
+}

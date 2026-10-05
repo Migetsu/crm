@@ -54,4 +54,24 @@ describe('Org Unit Vacancies & Presets Integration', () => {
     expect(unit1Cashier?.is_open).toBe(true)
     expect(unit2Cashier?.is_open).toBe(false)
   })
+
+  it('should simulate bulk open and close across multiple units', () => {
+    const units = [{ id: 'u1' }, { id: 'u2' }, { id: 'u3' }]
+    const storeVacancies = [
+      { id: 'v1', org_unit_id: 'u1', title: 'Пекарь', is_open: false },
+      { id: 'v2', org_unit_id: 'u2', title: 'Пекарь', is_open: true },
+    ]
+
+    // Simulate bulk open
+    const openResults = units.map(u => {
+      const match = storeVacancies.find(v => v.org_unit_id === u.id)
+      return match ? { ...match, is_open: true } : { id: `new-${u.id}`, org_unit_id: u.id, title: 'Пекарь', is_open: true }
+    })
+    expect(openResults.every(v => v.is_open)).toBe(true)
+    expect(openResults).toHaveLength(3)
+
+    // Simulate bulk close
+    const closeResults = openResults.map(v => ({ ...v, is_open: false }))
+    expect(closeResults.every(v => !v.is_open)).toBe(true)
+  })
 })

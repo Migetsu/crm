@@ -118,6 +118,34 @@ export const useVacanciesStore = defineStore('vacancies', () => {
     return created ? true : null
   }
 
+  // Sets preset position open/closed in a specific org unit
+  const setUnitPresetOpen = async (preset: VacancyPreset, unitId: string, targetOpen: boolean): Promise<boolean | null> => {
+    const existing = findVacancyForPreset(
+      preset,
+      vacancies.value.filter(v => v.org_unit_id === unitId),
+    )
+    if (existing) {
+      if (existing.is_open === targetOpen) return targetOpen
+      return (await toggleOpen(existing.id, targetOpen)) ? targetOpen : null
+    }
+    if (!targetOpen) return false
+    const created = await create({
+      title: preset.title,
+      description: preset.description,
+      requirements: preset.requirements,
+      responsibilities: preset.responsibilities,
+      org_unit_id: unitId,
+      is_open: true,
+    })
+    return created ? true : null
+  }
+
+  // Bulk open or close preset position across an array of org units
+  const setAllUnitsPreset = async (preset: VacancyPreset, unitIds: string[], targetOpen: boolean): Promise<boolean> => {
+    const results = await Promise.all(unitIds.map(unitId => setUnitPresetOpen(preset, unitId, targetOpen)))
+    return results.every(res => res !== null)
+  }
+
   const search = async (query: string) => {
     isLoading.value = true
     error.value = null
@@ -143,6 +171,8 @@ export const useVacanciesStore = defineStore('vacancies', () => {
     update,
     toggleOpen,
     toggleUnitPreset,
+    setUnitPresetOpen,
+    setAllUnitsPreset,
     search,
   }
 })

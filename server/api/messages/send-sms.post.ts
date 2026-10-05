@@ -26,8 +26,16 @@ export default defineEventHandler(async (event) => {
   const authHeader = getHeader(event, 'authorization')
   if (authHeader && authHeader.startsWith('Bearer ')) {
     const token = authHeader.replace('Bearer ', '').trim()
-    const { data: authUser } = await adminClient.auth.getUser(token)
-    callerId = authUser.user?.id || null
+    try {
+      const { data: authUser } = await adminClient.auth.getUser(token)
+      const rawId = authUser.user?.id || null
+      if (rawId) {
+        const { data: prof } = await adminClient.from('profiles').select('id').eq('id', rawId).maybeSingle()
+        callerId = prof?.id || null
+      }
+    } catch {
+      callerId = null
+    }
   }
 
   // 2. Dispatch through SMS gateway

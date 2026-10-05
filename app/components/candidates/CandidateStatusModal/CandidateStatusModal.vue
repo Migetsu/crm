@@ -404,27 +404,63 @@ const handleSave = async () => {
   try {
     const success = await candidatesStore.updateStatus(props.candidate.id, selectedStatus.value as CandidateStatus)
     if (success) {
-      // 1. If interview notification was requested, record message sending in history
+      // 1. If interview notification was requested, dispatch message or record in history
       if (selectedStatus.value === 'interview_scheduled' && sendNotification.value && notificationMessage.value.trim()) {
-        const channelTitle = notificationChannel.value === 'sms'
-          ? 'SMS: Приглашение на собеседование'
-          : 'Email: Приглашение на собеседование'
+        let dispatched = false
+        try {
+          const session = await supabase.auth.getSession()
+          const token = session.data.session?.access_token
+          if (notificationChannel.value === 'sms' && props.candidate.phone) {
+            await $fetch('/api/messages/send-sms', {
+              method: 'POST',
+              headers: token ? { Authorization: `Bearer ${token}` } : {},
+              body: {
+                candidateId: props.candidate.id,
+                phone: props.candidate.phone,
+                text: notificationMessage.value.trim(),
+                templateId: selectedTemplateId.value || undefined,
+              },
+            })
+            dispatched = true
+          } else if (notificationChannel.value === 'email' && props.candidate.email) {
+            await $fetch('/api/messages/send-email', {
+              method: 'POST',
+              headers: token ? { Authorization: `Bearer ${token}` } : {},
+              body: {
+                candidateId: props.candidate.id,
+                to: props.candidate.email,
+                subject: 'Приглашение на собеседование',
+                text: notificationMessage.value.trim(),
+                templateId: selectedTemplateId.value || undefined,
+              },
+            })
+            dispatched = true
+          }
+        } catch (dispatchErr) {
+          console.warn('Gateway dispatch failed, logging event directly:', dispatchErr)
+        }
 
-        await historyService.create({
-          candidate_id: props.candidate.id,
-          type: notificationChannel.value,
-          title: channelTitle,
-          body: notificationMessage.value.trim(),
-          created_by: user.value?.id || null,
-          meta: {
-            template_id: selectedTemplateId.value || null,
-            channel: notificationChannel.value,
-            interview_date: interviewDate.value || null,
-            interview_address: interviewAddress.value || null,
-            org_unit_id: interviewOrgUnit.value || null,
-            recipient: notificationChannel.value === 'sms' ? props.candidate.phone : props.candidate.email,
-          },
-        })
+        if (!dispatched) {
+          const channelTitle = notificationChannel.value === 'sms'
+            ? 'SMS: Приглашение на собеседование'
+            : 'Email: Приглашение на собеседование'
+
+          await historyService.create({
+            candidate_id: props.candidate.id,
+            type: notificationChannel.value,
+            title: channelTitle,
+            body: notificationMessage.value.trim(),
+            created_by: user.value?.id || null,
+            meta: {
+              template_id: selectedTemplateId.value || null,
+              channel: notificationChannel.value,
+              interview_date: interviewDate.value || null,
+              interview_address: interviewAddress.value || null,
+              org_unit_id: interviewOrgUnit.value || null,
+              recipient: notificationChannel.value === 'sms' ? props.candidate.phone : props.candidate.email,
+            },
+          })
+        }
       }
 
       // 2. Record status change in history

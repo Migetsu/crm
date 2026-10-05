@@ -78,6 +78,19 @@
           span.vacancies-units-modal__stats-item
             | Открыто в филиалах: 
             strong {{ selectedPresetOpenCount }} из {{ orgUnitsStore.orgUnits.length }}
+          .vacancies-units-modal__bulk-actions(v-if="permissions.canToggleVacancyStatus")
+            UiButton(
+              variant="secondary",
+              size="xs",
+              :disabled="selectedPresetOpenCount === orgUnitsStore.orgUnits.length || isBulkOperating",
+              @click="handleBulkToggle(true)"
+            ) Открыть во всех
+            UiButton(
+              variant="secondary",
+              size="xs",
+              :disabled="selectedPresetOpenCount === 0 || isBulkOperating",
+              @click="handleBulkToggle(false)"
+            ) Закрыть во всех
 
       .vacancies-units-modal__toolbar
         .vacancies-units-modal__search
@@ -319,6 +332,33 @@ const handleToggleUnit = async (item: ModalUnitDisplayItem) => {
   }
 }
 
+const isBulkOperating = ref(false)
+
+const handleBulkToggle = async (targetOpen: boolean) => {
+  if (!selectedPreset.value || isBulkOperating.value) return
+  const preset = selectedPreset.value
+  const allUnitIds = orgUnitsStore.orgUnits.map(u => u.id)
+  isBulkOperating.value = true
+
+  try {
+    const success = await vacanciesStore.setAllUnitsPreset(preset, allUnitIds, targetOpen)
+    if (success) {
+      toast.success(
+        targetOpen
+          ? `Должность «${preset.title}» открыта во всех филиалах`
+          : `Должность «${preset.title}» закрыта во всех филиалах`
+      )
+    } else {
+      toast.error('Некоторые филиалы не удалось обновить')
+    }
+  } catch (err: unknown) {
+    toast.error('Ошибка при обновлении статусов по филиалам')
+    console.error(err)
+  } finally {
+    isBulkOperating.value = false
+  }
+}
+
 onMounted(async () => {
   await Promise.all([vacanciesStore.fetchAll(), orgUnitsStore.fetchAll()])
 })
@@ -544,6 +584,11 @@ onMounted(async () => {
   }
 
   &__stats {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
     font-size: 13px;
     color: var(--color-text-primary);
     font-weight: 500;
@@ -551,6 +596,12 @@ onMounted(async () => {
     strong {
       color: var(--color-primary);
     }
+  }
+
+  &__bulk-actions {
+    display: flex;
+    align-items: center;
+    gap: 6px;
   }
 
   &__toolbar {

@@ -16,7 +16,7 @@
   "dependencies": {
     "@nuxtjs/supabase": "^1.4.2",
     "@pinia/nuxt": "^0.9.0",
-    "@supabase/supabase-js": "^2.48.1",
+    "@supabase/supabase-js": "^2.117.2",
     "@vueuse/core": "^14.3.0",
     "date-fns": "^4.1.0",
     "gsap": "^3.12.7",

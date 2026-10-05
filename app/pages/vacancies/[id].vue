@@ -24,11 +24,6 @@
         template(#icon)
           Plus(:size="16")
         | Добавить кандидата
-      UiButton(
-        :variant="vacancy.is_open ? 'secondary' : 'primary'",
-        size="sm",
-        @click="toggle"
-      ) {{ vacancy.is_open ? 'Закрыть вакансию' : 'Открыть вакансию' }}
 
   //- Details Grid: Info + Org Unit
   .page-vacancy__info-grid
@@ -261,18 +256,6 @@ onMounted(async () => {
   await vacanciesStore.fetchById(id)
   await loadCandidates()
 })
-
-const toast = useToast()
-
-const toggle = async () => {
-  if (!vacancy.value) return
-  const success = await vacanciesStore.toggleOpen(vacancy.value.id, !vacancy.value.is_open)
-  if (success) {
-    toast.success(vacancy.value.is_open ? 'Вакансия открыта' : 'Вакансия закрыта')
-  } else {
-    toast.error('Не удалось изменить статус вакансии')
-  }
-}
 
 const handleCandidateCreated = async () => {
   await loadCandidates()

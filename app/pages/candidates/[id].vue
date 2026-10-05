@@ -154,9 +154,15 @@
                   .tab-history__meta-row(v-if="event.meta.interview_date")
                     span.tab-history__meta-label Собеседование:
                     span.tab-history__meta-value {{ formatDateTime(event.meta.interview_date) }}
+                  .tab-history__meta-row(v-if="event.meta.interview_org_unit_name")
+                    span.tab-history__meta-label Орг. единица:
+                    span.tab-history__meta-value {{ event.meta.interview_org_unit_name }}
                   .tab-history__meta-row(v-if="event.meta.interview_address")
                     span.tab-history__meta-label Адрес собеседования:
                     span.tab-history__meta-value {{ event.meta.interview_address }}
+                  .tab-history__meta-row(v-if="event.type === 'status_change' && event.meta.interview_date")
+                    span.tab-history__meta-label Информирование:
+                    span.tab-history__meta-value {{ getNotificationLabel(event.meta) }}
 
                 //- Body / comment / message
                 .tab-history__body(v-if="event.body") {{ event.body }}
@@ -270,6 +276,11 @@
       .page-candidate__vacancy-card(v-if="vacancy")
         h3.page-candidate__card-title Вакансия
         NuxtLink.page-candidate__card-link(:to="`/vacancies/${vacancy.id}`") {{ vacancy.title }}
+        .page-candidate__interview(v-if="interviewInfo")
+          span.page-candidate__interview-label Интервью назначено:
+          strong.page-candidate__interview-unit(v-if="interviewInfo.unitName") {{ interviewInfo.unitName }}
+          span.page-candidate__interview-address(v-if="interviewInfo.address") {{ interviewInfo.address }}
+          span.page-candidate__interview-date(v-if="interviewInfo.date") {{ formatDateTime(interviewInfo.date) }}
 
   //- Status Change Modal
   CandidateStatusModal(
@@ -368,7 +379,7 @@ import {
   SOURCE_LABELS, ADD_METHOD_LABELS, REJECTED_LABELS, SELF_REJECTED_LABELS,
   RESERVE_LABELS, NO_FEEDBACK_LABELS,
 } from '~/types/candidate.types'
-import type { HistoryEvent, HistoryEventType } from '~/types/history.types'
+import type { HistoryEvent, HistoryEventMeta, HistoryEventType } from '~/types/history.types'
 import type { Vacancy } from '~/types/vacancy.types'
 import type { TemplateType } from '~/types/template.types'
 
@@ -580,6 +591,25 @@ const allReasonLabels: Record<string, string> = {
 const getReasonLabel = (reasonKey: string) => {
   return allReasonLabels[reasonKey] || reasonKey
 }
+
+const getNotificationLabel = (meta: HistoryEventMeta): string => {
+  if (!meta.notification_sent) return 'Кандидат не информирован'
+  return meta.notification_channel === 'email' ? 'Отправлено Email' : 'Отправлено SMS'
+}
+
+// Latest scheduled interview, shown only while the candidate is in that status
+const interviewInfo = computed(() => {
+  if (candidate.value?.status !== 'interview_scheduled') return null
+  const event = history.value.find(
+    e => e.type === 'status_change' && e.meta?.to_status === 'interview_scheduled',
+  )
+  if (!event?.meta) return null
+  return {
+    unitName: (event.meta.interview_org_unit_name as string | null | undefined) ?? null,
+    address: event.meta.interview_address ?? null,
+    date: event.meta.interview_date ?? null,
+  }
+})
 
 // Consent helpers
 const latestConsent = computed(() => {
@@ -957,6 +987,26 @@ const addComment = async () => {
     &:hover {
       text-decoration: underline;
     }
+  }
+
+  &__interview {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px solid var(--color-border);
+    font-size: 13px;
+  }
+
+  &__interview-label,
+  &__interview-address,
+  &__interview-date {
+    color: var(--color-text-secondary);
+  }
+
+  &__interview-unit {
+    color: var(--color-text-primary);
   }
   
   &__loading {

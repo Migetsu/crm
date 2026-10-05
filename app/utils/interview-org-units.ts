@@ -48,7 +48,7 @@ export interface GetRelevantOrgUnitsParams {
 
 /**
  * Filters org units to only those where the candidate's vacancy role is currently open.
- * Falls back to all org units if no vacancy is specified or no units have open positions.
+ * Returns all org units only if the candidate has no vacancy specified.
  */
 export const getRelevantOrgUnits = ({
   candidateVacancyTitle,
@@ -85,10 +85,7 @@ export const getRelevantOrgUnits = ({
     matchingOpenOrgUnitIds.add(candidateVacancy.org_unit_id)
   }
 
-  const filtered = orgUnits.filter(u => matchingOpenOrgUnitIds.has(u.id))
-
-  // Return filtered list, or fallback to all units if none matched
-  return filtered.length > 0 ? filtered : orgUnits
+  return orgUnits.filter(u => matchingOpenOrgUnitIds.has(u.id))
 }
 
 export interface DetermineInterviewSelectionParams {

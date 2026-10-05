@@ -253,15 +253,14 @@ const relevantOrgUnits = computed(() => {
   })
 })
 
-const isFilteredByVacancy = computed(() => {
-  return Boolean(effectiveVacancyTitle.value) && relevantOrgUnits.value.length < orgUnitsStore.orgUnits.length
-})
+const isFilteredByVacancy = computed(() => Boolean(effectiveVacancyTitle.value))
 
 const orgUnitSelectLabel = computed(() => {
-  if (isFilteredByVacancy.value) {
-    return `Орг. единица / филиал * (где открыта должность «${effectiveVacancyTitle.value}»)`
+  if (!isFilteredByVacancy.value) return 'Орг. единица / филиал *'
+  if (relevantOrgUnits.value.length === 0) {
+    return `Орг. единица / филиал * (нет филиалов с открытой должностью «${effectiveVacancyTitle.value}»)`
   }
-  return 'Орг. единица / филиал *'
+  return `Орг. единица / филиал * (где открыта должность «${effectiveVacancyTitle.value}»)`
 })
 
 const orgUnitOptions = computed(() => {
@@ -429,6 +428,8 @@ const handleSave = async () => {
       }
 
       // 2. Record status change in history
+      const isInterview = selectedStatus.value === 'interview_scheduled'
+      const notified = isInterview && sendNotification.value && !!notificationMessage.value.trim()
       await historyService.create({
         candidate_id: props.candidate.id,
         type: 'status_change',
@@ -440,11 +441,12 @@ const handleSave = async () => {
           to_status: selectedStatus.value,
           reason: reason.value || null,
           next_contact_date: nextContactDate.value || null,
-          interview_address: interviewAddress.value || null,
-          interview_date: interviewDate.value || null,
-          interview_org_unit_id: interviewOrgUnit.value || null,
-          notification_sent: sendNotification.value && selectedStatus.value === 'interview_scheduled',
-          notification_channel: notificationChannel.value,
+          interview_address: isInterview ? interviewAddress.value || null : null,
+          interview_date: isInterview ? interviewDate.value || null : null,
+          interview_org_unit_id: isInterview ? interviewOrgUnit.value || null : null,
+          interview_org_unit_name: isInterview ? selectedOrgUnit.value?.name || null : null,
+          notification_sent: notified,
+          notification_channel: isInterview ? (notified ? notificationChannel.value : 'none') : null,
         },
       })
       

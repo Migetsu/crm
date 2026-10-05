@@ -165,14 +165,14 @@ describe('interview-org-units utility', () => {
     expect(relevant[0].id).toBe('store-2')
   })
 
-  it('falls back to all org units if no open vacancies matched', () => {
+  it('returns no org units if the role is not open anywhere', () => {
     const relevant = getRelevantOrgUnits({
       candidateVacancyTitle: 'Директор гипермаркета',
       vacancies: mockVacancies,
       orgUnits: mockOrgUnits,
     })
 
-    expect(relevant).toHaveLength(3)
+    expect(relevant).toHaveLength(0)
   })
 
   it('falls back to all org units if no vacancy specified at all', () => {

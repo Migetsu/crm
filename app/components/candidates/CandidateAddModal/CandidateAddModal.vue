@@ -61,7 +61,12 @@ UiModal(v-model="isOpen", title="Добавить кандидата", size="lg"
       )
       
       UiInput(v-model="form.email", label="Почта", type="email", placeholder="email@example.com")
-      UiInput(v-model="form.resume_link", label="Ссылка на резюме", placeholder="https://...")
+      .candidate-add-form__resume-field
+        UiFileUpload(
+          label="Резюме (PDF, DOCX, DOC)",
+          @file-selected="file => resumeFile = file"
+        )
+        UiInput(v-if="!resumeFile", v-model="form.resume_link", label="Или внешняя ссылка на резюме", placeholder="https://...")
       UiInput(v-model="form.address", label="Адрес", placeholder="Город, улица")
       
       UiSelect(
@@ -105,6 +110,7 @@ import { useRouter } from 'vue-router'
 import { useCandidatesStore } from '~/stores/candidates.store'
 import { useVacanciesStore } from '~/stores/vacancies.store'
 import { HistoryService } from '~/services/history.service'
+import { StorageService } from '~/services/storage.service'
 import { CITIZENSHIP_LABELS, GENDER_LABELS, SOURCE_LABELS, ADD_METHOD_LABELS } from '~/types/candidate.types'
 import type { CandidateCreatePayload, Citizenship, CandidateGender, CandidateSource, CandidateAddMethod } from '~/types/candidate.types'
 
@@ -115,9 +121,11 @@ const vacanciesStore = useVacanciesStore()
 const supabase = useSupabaseClient()
 const user = useSupabaseUser()
 const historyService = new HistoryService(supabase)
+const storageService = new StorageService(supabase)
 
 const isSubmitting = ref(false)
 const comment = ref('')
+const resumeFile = ref<File | null>(null)
 
 const form = reactive({
   vacancy_id: '',
@@ -198,6 +206,27 @@ const handleSubmit = async () => {
     
     const candidate = await candidatesStore.create(payload)
     if (candidate) {
+      if (resumeFile.value) {
+        try {
+          const uploadRes = await storageService.uploadResume(candidate.id, resumeFile.value)
+          await candidatesStore.update(candidate.id, { resume_link: uploadRes.url })
+          await historyService.create({
+            candidate_id: candidate.id,
+            type: 'attachment',
+            title: `Загружено резюме: ${uploadRes.name}`,
+            body: null,
+            created_by: user.value?.id || null,
+            meta: {
+              file_name: uploadRes.name,
+              file_url: uploadRes.url,
+              file_size: uploadRes.size,
+            },
+          })
+        } catch (uploadErr) {
+          console.error('Failed to upload resume:', uploadErr)
+        }
+      }
+
       // Record status_change event
       await historyService.create({
         candidate_id: candidate.id,
@@ -220,6 +249,7 @@ const handleSubmit = async () => {
 watch(isOpen, (val) => {
   if (val) {
     errors.value = {}
+    resumeFile.value = null
     form.vacancy_id = ''
     form.last_name = ''
     form.first_name = ''
@@ -249,6 +279,12 @@ watch(isOpen, (val) => {
   }
   
   &__middle-name {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  &__resume-field {
     display: flex;
     flex-direction: column;
     gap: 8px;

@@ -95,7 +95,7 @@ const updatePosition = () => {
     top: `${rect.bottom + 4}px`,
     left: `${rect.left}px`,
     width: `${rect.width}px`,
-    zIndex: '9999',
+    zIndex: '10010',
   }
 }
 

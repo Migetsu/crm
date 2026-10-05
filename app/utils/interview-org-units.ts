@@ -1,43 +1,6 @@
 import type { OrgUnit } from '~/types/org-unit.types'
 import type { Vacancy } from '~/types/vacancy.types'
-
-/**
- * Normalizes title for comparison (lowercase, trimmed, dashes replaced with spaces)
- */
-export const normalizeVacancyTitle = (title: string): string => {
-  return title.trim().toLowerCase().replace(/[-–—]/g, ' ')
-}
-
-/**
- * Checks whether two vacancy titles refer to the same retail role or title
- */
-export const isVacancyTitleMatching = (titleA: string, titleB: string): boolean => {
-  const a = normalizeVacancyTitle(titleA)
-  const b = normalizeVacancyTitle(titleB)
-
-  if (a === b) return true
-
-  // Standard retail role keywords
-  const keywords = [
-    'кассир',
-    'пекар',
-    'сборщик',
-    'комплектовщик',
-    'администратор',
-    'заместител',
-    'директор',
-    'грузчик',
-    'товаровед',
-  ]
-
-  for (const kw of keywords) {
-    if (a.includes(kw) && b.includes(kw)) {
-      return true
-    }
-  }
-
-  return false
-}
+import { isSamePosition } from '~/utils/vacancy-preset-match'
 
 export interface GetRelevantOrgUnitsParams {
   candidateVacancyTitle?: string | null
@@ -75,7 +38,7 @@ export const getRelevantOrgUnits = ({
     }
 
     // Role or title match
-    if (targetTitle && isVacancyTitleMatching(targetTitle, v.title)) {
+    if (targetTitle && isSamePosition(targetTitle, v.title)) {
       matchingOpenOrgUnitIds.add(v.org_unit_id)
     }
   }

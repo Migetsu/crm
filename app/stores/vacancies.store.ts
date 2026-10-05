@@ -3,7 +3,8 @@ import { ref } from 'vue'
 import { VacanciesService } from '~/services/vacancies.service'
 import type { Vacancy } from '~/types/vacancy.types'
 import { getErrorMessage } from '~/utils/error'
-import { isAllowedVacancyTitle } from '~/data/vacancy-presets'
+import { isAllowedVacancyTitle, type VacancyPreset } from '~/data/vacancy-presets'
+import { findVacancyForPreset } from '~/utils/vacancy-preset-match'
 
 export const useVacanciesStore = defineStore('vacancies', () => {
   const supabase = useSupabaseClient()
@@ -96,6 +97,27 @@ export const useVacanciesStore = defineStore('vacancies', () => {
     return update(id, { is_open: isOpen })
   }
 
+  // Opens or closes a preset position in one org unit; returns new state or null on failure
+  const toggleUnitPreset = async (preset: VacancyPreset, unitId: string): Promise<boolean | null> => {
+    const existing = findVacancyForPreset(
+      preset,
+      vacancies.value.filter(v => v.org_unit_id === unitId),
+    )
+    if (existing) {
+      const target = !existing.is_open
+      return (await toggleOpen(existing.id, target)) ? target : null
+    }
+    const created = await create({
+      title: preset.title,
+      description: preset.description,
+      requirements: preset.requirements,
+      responsibilities: preset.responsibilities,
+      org_unit_id: unitId,
+      is_open: true,
+    })
+    return created ? true : null
+  }
+
   const search = async (query: string) => {
     isLoading.value = true
     error.value = null
@@ -120,6 +142,7 @@ export const useVacanciesStore = defineStore('vacancies', () => {
     create,
     update,
     toggleOpen,
+    toggleUnitPreset,
     search,
   }
 })

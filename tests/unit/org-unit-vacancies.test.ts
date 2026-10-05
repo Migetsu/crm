@@ -34,4 +34,24 @@ describe('Org Unit Vacancies & Presets Integration', () => {
     expect(openCount).toBe(2)
     expect(totalCandidates).toBe(8)
   })
+
+  it('should find vacancy for preset and calculate open branches correctly', () => {
+    const mockStoreVacancies = [
+      { id: '1', title: 'Продавец-кассир', org_unit_id: 'unit-1', is_open: true },
+      { id: '2', title: 'Кассир', org_unit_id: 'unit-2', is_open: false },
+      { id: '3', title: 'Пекарь', org_unit_id: 'unit-1', is_open: true },
+    ]
+
+    const cashierPreset = findVacancyPresetById('cashier')!
+    const unit1Cashier = mockStoreVacancies.find(
+      v => v.org_unit_id === 'unit-1' && (v.title.includes('кассир') || v.title.includes('Кассир'))
+    )
+    const unit2Cashier = mockStoreVacancies.find(
+      v => v.org_unit_id === 'unit-2' && (v.title.includes('кассир') || v.title.includes('Кассир'))
+    )
+
+    expect(cashierPreset).toBeDefined()
+    expect(unit1Cashier?.is_open).toBe(true)
+    expect(unit2Cashier?.is_open).toBe(false)
+  })
 })

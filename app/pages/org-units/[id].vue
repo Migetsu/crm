@@ -232,7 +232,8 @@ import { useRolePermissions } from '~/composables/useRolePermissions'
 import { useToast } from '~/composables/useToast'
 import { useConfirm } from '~/composables/useConfirm'
 import UiSkeleton from '~/components/ui/UiSkeleton/UiSkeleton.vue'
-import { VACANCY_PRESETS, findVacancyPresetById, type VacancyPreset } from '~/data/vacancy-presets'
+import { VACANCY_PRESETS, type VacancyPreset } from '~/data/vacancy-presets'
+import { findVacancyForPreset } from '~/utils/vacancy-preset-match'
 import { getManagerRoleLabel } from '~/utils/manager-roles'
 import type { ManagerRole } from '~/types/org-unit.types'
 import type { Vacancy } from '~/types/vacancy.types'
@@ -297,11 +298,6 @@ onMounted(async () => {
   }
 })
 
-// Normalizes titles to match presets with DB vacancies (e.g. "кассир" matches "продавец-кассир")
-const normalizeTitle = (title: string): string => {
-  return title.trim().toLowerCase().replace(/[-–—]/g, ' ')
-}
-
 // Combines the 6 default presets + existing DB vacancies for this unit
 const combinedVacancies = computed<UnitVacancyDisplayItem[]>(() => {
   const currentUnitId = unitId.value
@@ -310,16 +306,7 @@ const combinedVacancies = computed<UnitVacancyDisplayItem[]>(() => {
 
   // 1. Map through the 6 default presets
   const presetItems: UnitVacancyDisplayItem[] = VACANCY_PRESETS.map(preset => {
-    const normPresetTitle = normalizeTitle(preset.title)
-    
-    // Find matching vacancy in DB
-    const matchingVacancy = existingForUnit.find(v => {
-      const normV = normalizeTitle(v.title)
-      return normV === normPresetTitle || 
-        (preset.id === 'cashier' && normV.includes('кассир')) ||
-        (preset.id === 'baker' && normV.includes('пекар')) ||
-        (preset.id === 'picker' && normV.includes('сборщик'))
-    })
+    const matchingVacancy = findVacancyForPreset(preset, existingForUnit)
 
     if (matchingVacancy) {
       matchedExistingIds.add(matchingVacancy.id)
@@ -385,30 +372,19 @@ const handleToggleVacancy = async (item: UnitVacancyDisplayItem) => {
   togglingKeys.value.add(toggleKey)
 
   try {
-    if (item.dbVacancy) {
-      // Vacancy already exists in DB: toggle its is_open state
-      const targetState = !item.dbVacancy.is_open
-      const success = await vacanciesStore.toggleOpen(item.dbVacancy.id, targetState)
-      if (success) {
-        toast.success(targetState ? `Вакансия «${item.title}» открыта` : `Вакансия «${item.title}» закрыта`)
-      } else {
-        toast.error('Не удалось изменить статус вакансии')
-      }
-    } else if (item.preset) {
-      // Vacancy is a default preset not yet in DB for this unit: create and open it
-      const created = await vacanciesStore.create({
-        title: item.preset.title,
-        description: item.preset.description,
-        requirements: item.preset.requirements,
-        responsibilities: item.preset.responsibilities,
-        org_unit_id: unitId.value,
-        is_open: true,
-      })
-      if (created) {
-        toast.success(`Вакансия «${item.preset.title}» успешно открыта в филиале`)
-      } else {
-        toast.error('Не удалось открыть вакансию')
-      }
+    let newState: boolean | null
+    if (item.preset) {
+      newState = await vacanciesStore.toggleUnitPreset(item.preset, unitId.value)
+    } else if (item.dbVacancy) {
+      const target = !item.dbVacancy.is_open
+      newState = (await vacanciesStore.toggleOpen(item.dbVacancy.id, target)) ? target : null
+    } else {
+      return
+    }
+    if (newState === null) {
+      toast.error('Не удалось изменить статус вакансии')
+    } else {
+      toast.success(newState ? `Вакансия «${item.title}» открыта` : `Вакансия «${item.title}» закрыта`)
     }
   } catch (err: unknown) {
     toast.error('Ошибка при изменении статуса вакансии')

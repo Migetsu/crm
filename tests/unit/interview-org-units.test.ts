@@ -1,10 +1,9 @@
 import { describe, it, expect } from 'vitest'
 import {
-  isVacancyTitleMatching,
-  normalizeVacancyTitle,
   getRelevantOrgUnits,
   determineInterviewSelection,
 } from '~/utils/interview-org-units'
+import { isSamePosition } from '~/utils/vacancy-preset-match'
 import type { OrgUnit } from '~/types/org-unit.types'
 import type { Vacancy } from '~/types/vacancy.types'
 
@@ -130,16 +129,12 @@ describe('interview-org-units utility', () => {
     },
   ]
 
-  it('normalizes vacancy title', () => {
-    expect(normalizeVacancyTitle(' Продавец—кассир ')).toBe('продавец кассир')
-  })
-
-  it('matches matching retail titles and keywords', () => {
-    expect(isVacancyTitleMatching('Продавец-кассир', 'Кассир торгового зала')).toBe(true)
-    expect(isVacancyTitleMatching('Пекарь', 'Пекарь-универсал')).toBe(true)
-    expect(isVacancyTitleMatching('Сборщик заказов', 'Комплектовщик')).toBe(false)
-    expect(isVacancyTitleMatching('Администратор магазина', 'Старший администратор')).toBe(true)
-    expect(isVacancyTitleMatching('Кассир', 'Пекарь')).toBe(false)
+  it('matches retail titles to the same position', () => {
+    expect(isSamePosition('Продавец-кассир', 'Кассир торгового зала')).toBe(true)
+    expect(isSamePosition('Пекарь', 'Пекарь-универсал')).toBe(true)
+    expect(isSamePosition('Администратор магазина', 'Старший администратор')).toBe(true)
+    expect(isSamePosition('Кассир', 'Пекарь')).toBe(false)
+    expect(isSamePosition('Директор магазина', 'Заместитель директора магазина')).toBe(false)
   })
 
   it('filters org units to only those with open vacancy for the candidate role', () => {

@@ -3,167 +3,176 @@
   .page-vacancies__header
     .page-vacancies__headline
       h1.page-title Вакансии
-      p.page-vacancies__subtitle Управление штатным расписанием, филиалами и потоком соискателей
-    UiButton(v-if="permissions.canAddNewVacancy.value", variant="primary", @click="openCreateModal")
-      template(#icon)
-        Plus(:size="18")
-      | Добавить вакансию
+      p.page-vacancies__subtitle Управление штатным расписанием сети и статусами должностей по филиалам
       
   .page-vacancies__filters-bar
     .page-vacancies__search
       Search.page-vacancies__search-icon(:size="16")
       input.page-vacancies__search-input(
         v-model="searchQuery",
-        placeholder="Поиск по названию вакансии...",
-        @input="debouncedSearch"
+        placeholder="Поиск по названию должности...",
       )
     .page-vacancies__filter-select
       UiSelect(
-        v-model="selectedOrgUnitFilter",
-        :options="orgUnitFilterOptions",
-        placeholder="Все подразделения",
-        searchable
-      )
-    .page-vacancies__filter-select
-      UiSelect(
-        v-model="selectedStatusFilter",
-        :options="statusFilterOptions",
-        placeholder="Все статусы"
+        v-model="selectedAvailabilityFilter",
+        :options="availabilityFilterOptions",
+        placeholder="Все должности"
       )
       
-  .page-vacancies__list(v-if="vacanciesStore.isLoading", aria-hidden="true")
+  .page-vacancies__list(v-if="vacanciesStore.isLoading && !vacanciesStore.isLoaded", aria-hidden="true")
     .vacancy-card(v-for="i in 3", :key="i", style="pointer-events: none;")
       .vacancy-card__left(style="width: 100%;")
-        .vacancy-card__title-row(style="display: flex; gap: 12px; margin-bottom: 8px;")
-          UiSkeleton(width="220px", height="20px")
-          UiSkeleton(width="80px", height="20px")
-        .vacancy-card__org-unit(style="display: flex; gap: 8px; margin-bottom: 12px;")
-          UiSkeleton(width="140px", height="14px")
-          UiSkeleton(width="180px", height="14px")
-        UiSkeleton(width="90%", height="14px", style="margin-bottom: 12px;")
-        .vacancy-card__counters(style="display: flex; gap: 12px;")
-          UiSkeleton(width="70px", height="24px")
-          UiSkeleton(width="60px", height="24px")
-          UiSkeleton(width="60px", height="24px")
+        UiSkeleton(width="220px", height="24px", style="margin-bottom: 8px;")
+        UiSkeleton(width="90%", height="16px", style="margin-bottom: 12px;")
+        UiSkeleton(width="240px", height="24px")
     
-  .page-vacancies__empty(v-else-if="filteredVacancies.length === 0")
+  .page-vacancies__empty(v-else-if="filteredPositionCards.length === 0")
     Briefcase(:size="48")
-    p Вакансии не найдены
+    p Должности не найдены
     p.page-vacancies__empty-hint Попробуйте изменить параметры поиска или фильтра
     
   .page-vacancies__list(v-else)
-    .vacancy-card(v-for="v in filteredVacancies", :key="v.id")
+    .vacancy-card.vacancy-card--interactive(
+      v-for="item in filteredPositionCards",
+      :key="item.preset.id",
+      @click="openUnitModal(item.preset)"
+    )
       .vacancy-card__left
         .vacancy-card__title-row
-          NuxtLink.vacancy-card__title(:to="`/vacancies/${v.id}`") {{ v.title }}
-          .vacancy-card__badge(:class="v.is_open ? 'vacancy-card__badge--open' : 'vacancy-card__badge--closed'")
-            | {{ v.is_open ? 'Открыта' : 'Закрыта' }}
+          h2.vacancy-card__title {{ item.preset.title }}
+          .vacancy-card__badge(
+            :class="item.openUnitsCount > 0 ? 'vacancy-card__badge--open' : 'vacancy-card__badge--closed'"
+          )
+            | {{ item.openUnitsCount > 0 ? `Открыта в филиалах: ${item.openUnitsCount} из ${item.totalUnitsCount}` : 'Закрыта во всех филиалах' }}
 
-        .vacancy-card__org-unit(v-if="v.org_unit_name")
-          Building2(:size="15")
-          span.vacancy-card__org-name {{ v.org_unit_name }}
-          span.vacancy-card__org-dot ·
-          MapPin(:size="14")
-          span.vacancy-card__org-address {{ v.org_unit_address || 'Адрес не указан' }}
-        .vacancy-card__org-unit.vacancy-card__org-unit--unassigned(v-else)
-          Building2(:size="15")
-          span Филиал не прикреплен
+        p.vacancy-card__desc(v-if="item.preset.description") {{ item.preset.description }}
 
-        p.vacancy-card__desc(v-if="v.description") {{ v.description }}
-
-        //- Candidate Status Counters
-        .vacancy-card__counters(v-if="v.status_counts")
+        .vacancy-card__counters
+          .vacancy-card__counter.vacancy-card__counter--branches
+            Building2(:size="14")
+            span Филиалы: 
+            strong {{ item.openUnitsCount }} / {{ item.totalUnitsCount }} открыто
           .vacancy-card__counter.vacancy-card__counter--total
             Users(:size="14")
-            span Всего: 
-            strong {{ v.status_counts.total }}
-          .vacancy-card__counter.vacancy-card__counter--new
-            span.vacancy-card__counter-dot
-            span Новые: 
-            strong {{ v.status_counts.new }}
-          .vacancy-card__counter.vacancy-card__counter--interview
-            span.vacancy-card__counter-dot
-            span На интервью: 
-            strong {{ v.status_counts.interview }}
-          .vacancy-card__counter.vacancy-card__counter--accepted
-            span.vacancy-card__counter-dot
-            span Приняты: 
-            strong {{ v.status_counts.accepted }}
-          .vacancy-card__counter.vacancy-card__counter--reserve(v-if="v.status_counts.reserve > 0")
-            span.vacancy-card__counter-dot
-            span Резерв: 
-            strong {{ v.status_counts.reserve }}
+            span Соискатели в сети: 
+            strong {{ item.totalCandidatesCount }}
 
       .vacancy-card__right
-        NuxtLink.vacancy-card__funnel-btn(:to="`/vacancies/${v.id}`")
-          | Воронка вакансии ▶
         UiButton(
-          v-if="permissions.canToggleVacancyStatus.value",
-          :variant="v.is_open ? 'secondary' : 'primary'",
+          variant="secondary",
           size="sm",
-          @click="toggleVacancy(v)"
-        ) {{ v.is_open ? 'Закрыть' : 'Открыть' }}
+          @click.stop="openUnitModal(item.preset)"
+        )
+          | Филиалы и статусы ▶
 
-  //- Create vacancy modal
-  UiModal(v-model="showCreateModal", title="Открыть вакансию в подразделении", size="lg")
-    .vacancy-form
-      UiSelect(
-        v-model="selectedPresetId",
-        label="Типовая должность сети *",
-        :options="presetSelectOptions",
-        placeholder="Выберите должность из списка",
-        searchable
-      )
+  //- Modal: Branches & Statuses for the selected vacancy position
+  UiModal(
+    v-model="showUnitsModal",
+    :title="selectedPreset ? `Филиалы: ${selectedPreset.title}` : 'Филиалы'",
+    size="lg"
+  )
+    .vacancies-units-modal(v-if="selectedPreset")
+      .vacancies-units-modal__header-summary
+        p.vacancies-units-modal__desc {{ selectedPreset.description }}
+        .vacancies-units-modal__stats
+          span.vacancies-units-modal__stats-item
+            | Открыто в филиалах: 
+            strong {{ selectedPresetOpenCount }} из {{ orgUnitsStore.orgUnits.length }}
 
-      UiSelect(
-        v-model="newVacancy.org_unit_id",
-        label="Филиал / Подразделение *",
-        :options="orgUnitSelectOptions",
-        placeholder="Выберите филиал",
-        searchable
-      )
-      .vacancy-form__field
-        label.vacancy-form__label Краткое описание (стандарт сети)
-        textarea.vacancy-form__textarea(
-          :value="newVacancy.description"
-          rows="3"
-          placeholder="Выберите типовую должность..."
-          readonly
+      .vacancies-units-modal__toolbar
+        .vacancies-units-modal__search
+          Search.vacancies-units-modal__search-icon(:size="16")
+          input.vacancies-units-modal__search-input(
+            v-model="unitSearchQuery",
+            placeholder="Поиск по названию филиала или адресу...",
+          )
+        .vacancies-units-modal__tabs
+          button.vacancies-units-modal__tab(
+            type="button",
+            :class="{ 'vacancies-units-modal__tab--active': unitFilterTab === 'all' }",
+            @click="unitFilterTab = 'all'"
+          )
+            | Все ({{ orgUnitsStore.orgUnits.length }})
+          button.vacancies-units-modal__tab(
+            type="button",
+            :class="{ 'vacancies-units-modal__tab--active': unitFilterTab === 'open' }",
+            @click="unitFilterTab = 'open'"
+          )
+            | Открыта ({{ selectedPresetOpenCount }})
+          button.vacancies-units-modal__tab(
+            type="button",
+            :class="{ 'vacancies-units-modal__tab--active': unitFilterTab === 'closed' }",
+            @click="unitFilterTab = 'closed'"
+          )
+            | Закрыта ({{ orgUnitsStore.orgUnits.length - selectedPresetOpenCount }})
+
+      .vacancies-units-modal__list(v-if="filteredModalUnits.length === 0")
+        .vacancies-units-modal__empty
+          Building2(:size="36")
+          p Филиалы не найдены
+          span.vacancies-units-modal__empty-hint Попробуйте изменить параметры поиска или фильтра
+
+      .vacancies-units-modal__list(v-else)
+        .vacancies-units-modal__item(
+          v-for="unitItem in filteredModalUnits",
+          :key="unitItem.unit.id",
+          :class="{ 'vacancies-units-modal__item--open': unitItem.isOpen }"
         )
-      .vacancy-form__field
-        label.vacancy-form__label Требования к соискателю (стандарт сети)
-        textarea.vacancy-form__textarea(
-          :value="newVacancy.requirements"
-          rows="4"
-          placeholder="Выберите типовую должность..."
-          readonly
-        )
-      .vacancy-form__field
-        label.vacancy-form__label Обязанности (стандарт сети)
-        textarea.vacancy-form__textarea(
-          :value="newVacancy.responsibilities"
-          rows="5"
-          placeholder="Что предстоит делать..."
-          readonly
-        )
+          .vacancies-units-modal__item-info
+            .vacancies-units-modal__item-name-row
+              NuxtLink.vacancies-units-modal__item-name(
+                :to="`/org-units/${unitItem.unit.id}`",
+                title="Перейти к странице подразделения"
+              ) {{ unitItem.unit.name }}
+              span.vacancies-units-modal__badge(
+                :class="unitItem.isOpen ? 'vacancies-units-modal__badge--open' : 'vacancies-units-modal__badge--closed'"
+              )
+                | {{ unitItem.isOpen ? 'Открыта' : 'Закрыта' }}
+
+            .vacancies-units-modal__item-address
+              MapPin(:size="14")
+              span {{ unitItem.unit.interview_address || 'Адрес не указан' }}
+
+            .vacancies-units-modal__item-funnel(v-if="unitItem.dbVacancy")
+              NuxtLink.vacancies-units-modal__funnel-link(
+                :to="`/vacancies/${unitItem.dbVacancy.id}`"
+              )
+                | Воронка соискателей ({{ unitItem.dbVacancy.status_counts?.total || 0 }}) ▶
+
+          .vacancies-units-modal__item-actions(v-if="permissions.canToggleVacancyStatus.value")
+            UiButton(
+              :variant="unitItem.isOpen ? 'secondary' : 'primary'",
+              size="sm",
+              :disabled="togglingUnitIds.has(unitItem.unit.id)",
+              @click="handleToggleUnit(unitItem)"
+            )
+              template(#icon)
+                component(:is="unitItem.isOpen ? XCircle : CheckCircle2", :size="15")
+              | {{ unitItem.isOpen ? 'Закрыть вакансию' : 'Открыть вакансию' }}
+
     template(#footer)
-      UiButton(variant="secondary", @click="closeCreateModal") Отмена
-      UiButton(
-        variant="primary",
-        @click="createVacancy",
-        :disabled="!selectedPresetId || !newVacancy.org_unit_id || isSubmitting"
-      )
-        | {{ isSubmitting ? 'Создание...' : 'Открыть вакансию' }}
+      UiButton(variant="secondary", @click="showUnitsModal = false") Закрыть
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, onMounted, watch } from 'vue'
-import { Plus, Search, Briefcase, Building2, MapPin, Users } from 'lucide-vue-next'
+import { ref, computed, onMounted } from 'vue'
+import {
+  Search,
+  Briefcase,
+  Building2,
+  MapPin,
+  Users,
+  CheckCircle2,
+  XCircle,
+} from 'lucide-vue-next'
 import { useVacanciesStore } from '~/stores/vacancies.store'
 import { useOrgUnitsStore } from '~/stores/org-units.store'
 import { useToast } from '~/composables/useToast'
+import { useRolePermissions } from '~/composables/useRolePermissions'
 import UiSkeleton from '~/components/ui/UiSkeleton/UiSkeleton.vue'
-import { VACANCY_PRESETS, findVacancyPresetById } from '~/data/vacancy-presets'
+import { VACANCY_PRESETS, type VacancyPreset } from '~/data/vacancy-presets'
+import { findVacancyForPreset } from '~/utils/vacancy-preset-match'
+import type { OrgUnit } from '~/types/org-unit.types'
 import type { Vacancy } from '~/types/vacancy.types'
 
 const vacanciesStore = useVacanciesStore()
@@ -172,138 +181,147 @@ const toast = useToast()
 const permissions = useRolePermissions()
 
 const searchQuery = ref('')
-const selectedOrgUnitFilter = ref('')
-const selectedStatusFilter = ref('all')
-const showCreateModal = ref(false)
-const isSubmitting = ref(false)
-const selectedPresetId = ref('')
-let debounceTimer: ReturnType<typeof setTimeout> | null = null
+const selectedAvailabilityFilter = ref('all')
 
-const newVacancy = reactive({
-  title: '',
-  description: '',
-  requirements: '',
-  responsibilities: '',
-  org_unit_id: '',
-})
+const showUnitsModal = ref(false)
+const selectedPreset = ref<VacancyPreset | null>(null)
+const unitSearchQuery = ref('')
+const unitFilterTab = ref<'all' | 'open' | 'closed'>('all')
+const togglingUnitIds = ref<Set<string>>(new Set())
 
-const presetSelectOptions = computed(() => {
-  return VACANCY_PRESETS.map(p => ({
-    value: p.id,
-    label: p.title,
-  }))
-})
-
-watch(selectedPresetId, (newId) => {
-  if (!newId) {
-    newVacancy.title = ''
-    newVacancy.description = ''
-    newVacancy.requirements = ''
-    newVacancy.responsibilities = ''
-    return
-  }
-  const preset = findVacancyPresetById(newId)
-  if (preset) {
-    newVacancy.title = preset.title
-    newVacancy.description = preset.description
-    newVacancy.requirements = preset.requirements
-    newVacancy.responsibilities = preset.responsibilities
-  }
-})
-
-const resetForm = () => {
-  selectedPresetId.value = ''
-  newVacancy.title = ''
-  newVacancy.description = ''
-  newVacancy.requirements = ''
-  newVacancy.responsibilities = ''
-  newVacancy.org_unit_id = ''
-}
-
-const openCreateModal = () => {
-  resetForm()
-  showCreateModal.value = true
-}
-
-const closeCreateModal = () => {
-  showCreateModal.value = false
-  resetForm()
-}
-
-const orgUnitFilterOptions = computed(() => {
-  return [
-    { value: '', label: 'Все подразделения' },
-    ...orgUnitsStore.orgUnits.map(u => ({ value: u.id, label: u.name })),
-  ]
-})
-
-const orgUnitSelectOptions = computed(() => {
-  return orgUnitsStore.orgUnits.map(u => ({ value: u.id, label: u.name }))
-})
-
-const statusFilterOptions = [
-  { value: 'all', label: 'Все вакансии' },
-  { value: 'open', label: 'Только открытые' },
-  { value: 'closed', label: 'Только закрытые' },
+const availabilityFilterOptions = [
+  { value: 'all', label: 'Все должности (6)' },
+  { value: 'open', label: 'Есть открытые филиалы' },
+  { value: 'closed', label: 'Закрыта во всех филиалах' },
 ]
 
-const filteredVacancies = computed(() => {
-  return vacanciesStore.vacancies.filter(v => {
-    if (selectedOrgUnitFilter.value && v.org_unit_id !== selectedOrgUnitFilter.value) {
-      return false
+interface PositionCardItem {
+  preset: VacancyPreset
+  openUnitsCount: number
+  totalUnitsCount: number
+  totalCandidatesCount: number
+  hasOpenUnits: boolean
+}
+
+const positionCards = computed<PositionCardItem[]>(() => {
+  return VACANCY_PRESETS.map(preset => {
+    const allMatchingVacancies = vacanciesStore.vacancies.filter(v =>
+      findVacancyForPreset(preset, [v]) !== undefined
+    )
+    const openMatchingVacancies = allMatchingVacancies.filter(v => v.is_open && v.org_unit_id)
+    const openOrgUnitIds = new Set(openMatchingVacancies.map(v => v.org_unit_id as string))
+    const totalCandidatesCount = allMatchingVacancies.reduce(
+      (sum, v) => sum + (v.status_counts?.total || 0),
+      0
+    )
+
+    return {
+      preset,
+      openUnitsCount: openOrgUnitIds.size,
+      totalUnitsCount: orgUnitsStore.orgUnits.length,
+      totalCandidatesCount,
+      hasOpenUnits: openOrgUnitIds.size > 0,
     }
-    if (selectedStatusFilter.value === 'open' && !v.is_open) return false
-    if (selectedStatusFilter.value === 'closed' && v.is_open) return false
+  })
+})
+
+const filteredPositionCards = computed(() => {
+  return positionCards.value.filter(card => {
+    if (searchQuery.value.trim()) {
+      const q = searchQuery.value.toLowerCase().trim()
+      const matchTitle = card.preset.title.toLowerCase().includes(q)
+      const matchDesc = card.preset.description.toLowerCase().includes(q)
+      if (!matchTitle && !matchDesc) return false
+    }
+    if (selectedAvailabilityFilter.value === 'open' && !card.hasOpenUnits) return false
+    if (selectedAvailabilityFilter.value === 'closed' && card.hasOpenUnits) return false
     return true
   })
 })
 
+const openUnitModal = (preset: VacancyPreset) => {
+  selectedPreset.value = preset
+  unitSearchQuery.value = ''
+  unitFilterTab.value = 'all'
+  showUnitsModal.value = true
+}
+
+const selectedPresetOpenCount = computed(() => {
+  if (!selectedPreset.value) return 0
+  const p = selectedPreset.value
+  return orgUnitsStore.orgUnits.filter(unit => {
+    const vac = findVacancyForPreset(
+      p,
+      vacanciesStore.vacancies.filter(v => v.org_unit_id === unit.id)
+    )
+    return Boolean(vac?.is_open)
+  }).length
+})
+
+interface ModalUnitDisplayItem {
+  unit: OrgUnit
+  isOpen: boolean
+  dbVacancy?: Vacancy
+}
+
+const modalUnits = computed<ModalUnitDisplayItem[]>(() => {
+  if (!selectedPreset.value) return []
+  const p = selectedPreset.value
+  return orgUnitsStore.orgUnits.map(unit => {
+    const vac = findVacancyForPreset(
+      p,
+      vacanciesStore.vacancies.filter(v => v.org_unit_id === unit.id)
+    )
+    return {
+      unit,
+      isOpen: Boolean(vac?.is_open),
+      dbVacancy: vac,
+    }
+  })
+})
+
+const filteredModalUnits = computed(() => {
+  return modalUnits.value.filter(item => {
+    if (unitSearchQuery.value.trim()) {
+      const q = unitSearchQuery.value.toLowerCase().trim()
+      const matchName = item.unit.name.toLowerCase().includes(q)
+      const matchAddr = (item.unit.interview_address || '').toLowerCase().includes(q)
+      if (!matchName && !matchAddr) return false
+    }
+    if (unitFilterTab.value === 'open' && !item.isOpen) return false
+    if (unitFilterTab.value === 'closed' && item.isOpen) return false
+    return true
+  })
+})
+
+const handleToggleUnit = async (item: ModalUnitDisplayItem) => {
+  if (!selectedPreset.value) return
+  const preset = selectedPreset.value
+  const unitId = item.unit.id
+  togglingUnitIds.value.add(unitId)
+
+  try {
+    const newState = await vacanciesStore.toggleUnitPreset(preset, unitId)
+    if (newState === null) {
+      toast.error('Не удалось изменить статус вакансии в филиале')
+    } else {
+      toast.success(
+        newState
+          ? `Вакансия «${preset.title}» открыта в «${item.unit.name}»`
+          : `Вакансия «${preset.title}» закрыта в «${item.unit.name}»`
+      )
+    }
+  } catch (err: unknown) {
+    toast.error('Ошибка при изменении статуса вакансии')
+    console.error(err)
+  } finally {
+    togglingUnitIds.value.delete(unitId)
+  }
+}
+
 onMounted(async () => {
   await Promise.all([vacanciesStore.fetchAll(), orgUnitsStore.fetchAll()])
 })
-
-const debouncedSearch = () => {
-  if (debounceTimer) clearTimeout(debounceTimer)
-  debounceTimer = setTimeout(() => {
-    vacanciesStore.search(searchQuery.value)
-  }, 300)
-}
-
-const toggleVacancy = async (v: Vacancy) => {
-  const success = await vacanciesStore.toggleOpen(v.id, !v.is_open)
-  if (success) {
-    toast.success(v.is_open ? 'Вакансия закрыта' : 'Вакансия открыта')
-  } else {
-    toast.error('Не удалось изменить статус вакансии')
-  }
-}
-
-const createVacancy = async () => {
-  if (!selectedPresetId.value || !newVacancy.title.trim()) return
-  isSubmitting.value = true
-  try {
-    const res = await vacanciesStore.create({
-      title: newVacancy.title.trim(),
-      description: newVacancy.description.trim() || null,
-      requirements: newVacancy.requirements.trim() || null,
-      responsibilities: newVacancy.responsibilities.trim() || null,
-      org_unit_id: newVacancy.org_unit_id || null,
-      is_open: true,
-    })
-    if (res) {
-      toast.success('Вакансия успешно создана')
-      showCreateModal.value = false
-      resetForm()
-    } else {
-      toast.error('Не удалось создать вакансию')
-    }
-  } catch (err: unknown) {
-    toast.error('Ошибка при создании вакансии')
-    console.error(err)
-  } finally {
-    isSubmitting.value = false
-  }
-}
 </script>
 
 <style lang="scss">
@@ -328,7 +346,7 @@ const createVacancy = async () => {
   
   &__filters-bar {
     display: grid;
-    grid-template-columns: 2fr 1fr 1fr;
+    grid-template-columns: 2fr 1fr;
     gap: 14px;
     margin-bottom: var(--spacing-6);
     background-color: var(--color-bg-card);
@@ -407,8 +425,14 @@ const createVacancy = async () => {
   transition: all 0.2s;
   gap: 20px;
   
-  &:hover {
-    border-color: var(--color-primary);
+  &--interactive {
+    cursor: pointer;
+
+    &:hover {
+      border-color: var(--color-primary);
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.05);
+      transform: translateY(-1px);
+    }
   }
   
   &__left {
@@ -423,41 +447,14 @@ const createVacancy = async () => {
     display: flex;
     align-items: center;
     gap: 12px;
+    flex-wrap: wrap;
   }
   
   &__title {
     font-weight: 700;
     font-size: 18px;
     color: var(--color-text-primary);
-    text-decoration: none;
-    transition: color 0.2s;
-    
-    &:hover {
-      color: var(--color-primary);
-      text-decoration: underline;
-    }
-  }
-
-  &__org-unit {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    font-size: 13px;
-    color: var(--color-text-secondary);
-
-    &--unassigned {
-      opacity: 0.6;
-      font-style: italic;
-    }
-  }
-
-  &__org-name {
-    color: var(--color-text-primary);
-    font-weight: 500;
-  }
-
-  &__org-dot {
-    margin: 0 2px;
+    margin: 0;
   }
   
   &__desc {
@@ -488,31 +485,13 @@ const createVacancy = async () => {
       color: var(--color-text-primary);
     }
 
-    &-dot {
-      width: 7px;
-      height: 7px;
-      border-radius: 50%;
-    }
-
-    &--total {
+    &--branches {
       color: var(--color-primary);
       strong { color: var(--color-primary); }
     }
 
-    &--new &-dot {
-      background-color: #3b82f6;
-    }
-
-    &--interview &-dot {
-      background-color: #f59e0b;
-    }
-
-    &--accepted &-dot {
-      background-color: #10b981;
-    }
-
-    &--reserve &-dot {
-      background-color: #8b5cf6;
+    &--total {
+      color: var(--color-text-primary);
     }
   }
   
@@ -522,22 +501,6 @@ const createVacancy = async () => {
     align-items: flex-end;
     gap: 12px;
     flex-shrink: 0;
-  }
-
-  &__funnel-btn {
-    font-size: 13px;
-    font-weight: 600;
-    color: var(--color-primary);
-    text-decoration: none;
-    padding: 6px 12px;
-    border-radius: var(--radius-md);
-    background-color: rgba(59, 130, 246, 0.1);
-    transition: all 0.2s;
-
-    &:hover {
-      background-color: var(--color-primary);
-      color: white;
-    }
   }
   
   &__badge {
@@ -558,42 +521,217 @@ const createVacancy = async () => {
   }
 }
 
-.vacancy-form {
+.vacancies-units-modal {
   display: flex;
   flex-direction: column;
   gap: 16px;
 
-  &__field {
+  &__header-summary {
     display: flex;
     flex-direction: column;
-    gap: 6px;
+    gap: 8px;
+    padding: 12px 14px;
+    background-color: var(--color-bg-body);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
   }
 
-  &__label {
-    font-size: 14px;
-    font-weight: 500;
+  &__desc {
+    font-size: 13px;
     color: var(--color-text-secondary);
+    line-height: 1.4;
+    margin: 0;
   }
 
-  &__textarea {
+  &__stats {
+    font-size: 13px;
+    color: var(--color-text-primary);
+    font-weight: 500;
+
+    strong {
+      color: var(--color-primary);
+    }
+  }
+
+  &__toolbar {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  &__search {
+    position: relative;
+    display: flex;
+    align-items: center;
+  }
+
+  &__search-icon {
+    position: absolute;
+    left: 12px;
+    color: var(--color-text-secondary);
+    pointer-events: none;
+  }
+
+  &__search-input {
     width: 100%;
-    padding: 10px 12px;
+    padding: 9px 12px 9px 34px;
     background-color: var(--color-bg-body);
     border: 1px solid var(--color-border);
     border-radius: var(--radius-md);
     color: var(--color-text-primary);
     font-size: 13px;
-    line-height: 1.5;
-    resize: vertical;
-    font-family: inherit;
+    outline: none;
+    transition: border-color 0.2s;
 
     &:focus {
-      outline: none;
+      border-color: var(--color-primary);
+    }
+  }
+
+  &__tabs {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  &__tab {
+    padding: 5px 12px;
+    border-radius: var(--radius-full);
+    border: 1px solid var(--color-border);
+    background-color: var(--color-bg-body);
+    color: var(--color-text-secondary);
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s ease;
+
+    &:hover {
+      color: var(--color-text-primary);
       border-color: var(--color-primary);
     }
 
-    &::placeholder {
-      color: var(--color-text-muted);
+    &--active {
+      background-color: var(--color-primary);
+      border-color: var(--color-primary);
+      color: white;
+
+      &:hover {
+        color: white;
+      }
+    }
+  }
+
+  &__list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    max-height: 420px;
+    overflow-y: auto;
+    padding-right: 4px;
+  }
+
+  &__item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 14px;
+    padding: 12px 14px;
+    background-color: var(--color-bg-body);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    transition: border-color 0.2s;
+
+    &:hover {
+      border-color: var(--color-primary);
+    }
+
+    &--open {
+      border-left: 3px solid #22c55e;
+    }
+
+    &-info {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      min-width: 0;
+      flex: 1;
+    }
+
+    &-name-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    &-name {
+      font-weight: 600;
+      font-size: 14px;
+      color: var(--color-text-primary);
+      text-decoration: none;
+
+      &:hover {
+        color: var(--color-primary);
+        text-decoration: underline;
+      }
+    }
+
+    &-address {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 12px;
+      color: var(--color-text-secondary);
+    }
+
+    &-funnel {
+      margin-top: 2px;
+    }
+
+    &-actions {
+      flex-shrink: 0;
+    }
+  }
+
+  &__badge {
+    padding: 2px 8px;
+    border-radius: var(--radius-full);
+    font-size: 11px;
+    font-weight: 600;
+
+    &--open {
+      background-color: rgba(34, 197, 94, 0.15);
+      color: #22c55e;
+    }
+
+    &--closed {
+      background-color: rgba(239, 68, 68, 0.15);
+      color: #ef4444;
+    }
+  }
+
+  &__funnel-link {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--color-primary);
+    text-decoration: none;
+
+    &:hover {
+      text-decoration: underline;
+    }
+  }
+
+  &__empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 36px 0;
+    color: var(--color-text-secondary);
+    gap: 8px;
+
+    &-hint {
+      font-size: 12px;
     }
   }
 }

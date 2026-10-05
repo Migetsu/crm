@@ -106,26 +106,13 @@
   //- Create vacancy modal
   UiModal(v-model="showCreateModal", title="Создать вакансию", size="lg")
     .vacancy-form
-      .vacancy-presets
-        .vacancy-presets__header
-          span.vacancy-presets__title Готовые шаблоны должностей:
-          span.vacancy-presets__hint Нажмите для быстрого заполнения
-        .vacancy-presets__list
-          button.vacancy-presets__chip(
-            v-for="preset in VACANCY_PRESETS"
-            :key="preset.id"
-            type="button"
-            :class="{ 'vacancy-presets__chip--active': activePresetId === preset.id }"
-            @click="selectPreset(preset)"
-          )
-            span.vacancy-presets__chip-dot
-            | {{ preset.title }}
-          button.vacancy-presets__chip.vacancy-presets__chip--clear(
-            v-if="activePresetId"
-            type="button"
-            @click="clearPreset"
-          )
-            | ✕ Сбросить
+      UiSelect(
+        v-model="selectedPresetId",
+        label="Шаблон типовой должности",
+        :options="presetSelectOptions",
+        placeholder="Выберите должность для быстрого заполнения",
+        searchable
+      )
 
       UiInput(v-model="newVacancy.title", label="Название вакансии *", placeholder="Например, Продавец-кассир")
       UiSelect(
@@ -163,13 +150,13 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted, watch } from 'vue'
 import { Plus, Search, Briefcase, Building2, MapPin, Users } from 'lucide-vue-next'
 import { useVacanciesStore } from '~/stores/vacancies.store'
 import { useOrgUnitsStore } from '~/stores/org-units.store'
 import { useToast } from '~/composables/useToast'
 import UiSkeleton from '~/components/ui/UiSkeleton/UiSkeleton.vue'
-import { VACANCY_PRESETS, type VacancyPreset } from '~/data/vacancy-presets'
+import { VACANCY_PRESETS, findVacancyPresetById } from '~/data/vacancy-presets'
 import type { Vacancy } from '~/types/vacancy.types'
 
 const vacanciesStore = useVacanciesStore()
@@ -181,7 +168,7 @@ const selectedOrgUnitFilter = ref('')
 const selectedStatusFilter = ref('all')
 const showCreateModal = ref(false)
 const isSubmitting = ref(false)
-const activePresetId = ref<string | null>(null)
+const selectedPresetId = ref('')
 let debounceTimer: ReturnType<typeof setTimeout> | null = null
 
 const newVacancy = reactive({
@@ -192,24 +179,39 @@ const newVacancy = reactive({
   org_unit_id: '',
 })
 
-const selectPreset = (preset: VacancyPreset) => {
-  activePresetId.value = preset.id
-  newVacancy.title = preset.title
-  newVacancy.description = preset.description
-  newVacancy.requirements = preset.requirements
-  newVacancy.responsibilities = preset.responsibilities
-}
+const presetSelectOptions = computed(() => {
+  return [
+    { value: '', label: '— Свой вариант (чистая форма) —' },
+    ...VACANCY_PRESETS.map(p => ({
+      value: p.id,
+      label: p.title,
+    })),
+  ]
+})
 
-const clearPreset = () => {
-  activePresetId.value = null
+watch(selectedPresetId, (newId) => {
+  if (!newId) {
+    newVacancy.title = ''
+    newVacancy.description = ''
+    newVacancy.requirements = ''
+    newVacancy.responsibilities = ''
+    return
+  }
+  const preset = findVacancyPresetById(newId)
+  if (preset) {
+    newVacancy.title = preset.title
+    newVacancy.description = preset.description
+    newVacancy.requirements = preset.requirements
+    newVacancy.responsibilities = preset.responsibilities
+  }
+})
+
+const resetForm = () => {
+  selectedPresetId.value = ''
   newVacancy.title = ''
   newVacancy.description = ''
   newVacancy.requirements = ''
   newVacancy.responsibilities = ''
-}
-
-const resetForm = () => {
-  clearPreset()
   newVacancy.org_unit_id = ''
 }
 
@@ -548,90 +550,6 @@ const createVacancy = async () => {
       background-color: rgba(239, 68, 68, 0.15);
       color: #ef4444;
     }
-  }
-}
-
-.vacancy-presets {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  padding: 12px 14px;
-  background-color: var(--color-bg-body);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-
-  &__header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-  }
-
-  &__title {
-    font-size: 13px;
-    font-weight: 600;
-    color: var(--color-text-primary);
-  }
-
-  &__hint {
-    font-size: 12px;
-    color: var(--color-text-muted);
-  }
-
-  &__list {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-  }
-
-  &__chip {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    padding: 6px 12px;
-    border-radius: var(--radius-md);
-    background-color: var(--color-bg-card);
-    border: 1px solid var(--color-border);
-    font-size: 12px;
-    font-weight: 500;
-    color: var(--color-text-secondary);
-    cursor: pointer;
-    transition: all 0.2s;
-
-    &:hover {
-      border-color: var(--color-primary);
-      color: var(--color-primary);
-      background-color: rgba(59, 130, 246, 0.05);
-    }
-
-    &--active {
-      border-color: var(--color-primary);
-      background-color: rgba(59, 130, 246, 0.12);
-      color: var(--color-primary);
-      font-weight: 600;
-
-      .vacancy-presets__chip-dot {
-        background-color: var(--color-primary);
-      }
-    }
-
-    &--clear {
-      color: var(--color-text-muted);
-      border-style: dashed;
-
-      &:hover {
-        border-color: #ef4444;
-        color: #ef4444;
-        background-color: rgba(239, 68, 68, 0.05);
-      }
-    }
-  }
-
-  &__chip-dot {
-    width: 6px;
-    height: 6px;
-    border-radius: 50%;
-    background-color: var(--color-text-muted);
-    transition: background-color 0.2s;
   }
 }
 

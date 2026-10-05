@@ -228,6 +228,22 @@ const selectedOrgUnit = computed(() => {
   return orgUnitsStore.orgUnits.find(u => u.id === interviewOrgUnit.value) || null
 })
 
+const availableStatuses = computed(() => {
+  if (!props.candidate) return []
+  const allKeys = Object.keys(STATUS_LABELS) as CandidateStatus[]
+  return allKeys
+    .filter(s => s !== props.candidate?.status)
+    .map(s => ({ value: s, label: STATUS_LABELS[s] }))
+})
+
+const toSelectOptions = (labels: Record<string, string>) => {
+  return Object.entries(labels).map(([value, label]) => ({ value, label }))
+}
+const noFeedbackOptions = toSelectOptions(NO_FEEDBACK_LABELS)
+const rejectedOptions = toSelectOptions(REJECTED_LABELS)
+const selfRejectedOptions = toSelectOptions(SELF_REJECTED_LABELS)
+const reserveOptions = toSelectOptions(RESERVE_LABELS)
+
 const relevantOrgUnits = computed(() => {
   return getRelevantOrgUnits({
     candidateVacancyTitle: effectiveVacancyTitle.value,

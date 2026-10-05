@@ -42,14 +42,24 @@ export interface SelectOption {
   label: string
 }
 
-const props = defineProps<{
-  modelValue?: string
-  label?: string
-  placeholder?: string
-  options: SelectOption[]
-  error?: string
-  searchable?: boolean
-}>()
+const props = withDefaults(
+  defineProps<{
+    modelValue?: string
+    label?: string
+    placeholder?: string
+    options?: SelectOption[]
+    error?: string
+    searchable?: boolean
+  }>(),
+  {
+    modelValue: '',
+    label: '',
+    placeholder: 'Выберите...',
+    options: () => [],
+    error: '',
+    searchable: false,
+  }
+)
 
 const emit = defineEmits<{
   (e: 'update:modelValue', value: string): void
@@ -65,14 +75,15 @@ const dropdownStyle = ref<Record<string, string>>({})
 
 const displayValue = computed(() => {
   if (!props.modelValue) return props.placeholder || 'Выберите...'
-  const opt = props.options.find(o => o.value === props.modelValue)
+  const opt = (props.options || []).find(o => o.value === props.modelValue)
   return opt ? opt.label : props.modelValue
 })
 
 const filteredOptions = computed(() => {
-  if (!searchQuery.value) return props.options
+  const opts = props.options || []
+  if (!searchQuery.value) return opts
   const q = searchQuery.value.toLowerCase()
-  return props.options.filter(o => o.label.toLowerCase().includes(q))
+  return opts.filter(o => o.label?.toLowerCase().includes(q))
 })
 
 const updateDropdownPosition = () => {

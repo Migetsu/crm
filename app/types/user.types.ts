@@ -46,3 +46,15 @@ export const canModifyUser = (callerRole?: string | null, targetRole?: string | 
   }
   return false
 }
+
+export const canDeleteUser = (callerRole?: string | null, targetRole?: string | null, isSelf = false): boolean => {
+  if (isSelf) return false
+  if (!callerRole || !targetRole) return false
+  if (targetRole === 'superadmin') return false
+  if (callerRole === 'superadmin') return true
+  if (callerRole === 'admin') {
+    return targetRole === 'operator' || targetRole === 'operator_director'
+  }
+  return false
+}
+

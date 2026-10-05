@@ -5,5 +5,6 @@ export const useConfirm = () => {
   const store = useConfirmStore()
   return {
     confirm: (options: ConfirmDialogOptions) => store.confirm(options),
+    show: (options: ConfirmDialogOptions) => store.confirm(options),
   }
 }

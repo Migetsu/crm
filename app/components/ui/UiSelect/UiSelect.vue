@@ -6,23 +6,29 @@
       | {{ displayValue }}
     ChevronDown.ui-select__icon(:size="16")
     
-  .ui-select__dropdown(v-if="isOpen", ref="dropdownRef")
-    .ui-select__search(v-if="searchable")
-      input.ui-select__search-input(
-        v-model="searchQuery",
-        placeholder="Поиск...",
-        ref="searchInputRef",
-        @click.stop
-      )
-    .ui-select__options
-      .ui-select__option(
-        v-for="option in filteredOptions",
-        :key="option.value",
-        :class="{ 'ui-select__option--selected': option.value === modelValue }",
-        @click.stop="selectOption(option.value)"
-      )
-        | {{ option.label }}
-      .ui-select__empty(v-if="filteredOptions.length === 0") Ничего не найдено
+  Teleport(to="body")
+    .ui-select__dropdown(
+      v-if="isOpen",
+      ref="dropdownRef",
+      :style="dropdownStyle",
+      @click.stop
+    )
+      .ui-select__search(v-if="searchable")
+        input.ui-select__search-input(
+          v-model="searchQuery",
+          placeholder="Поиск...",
+          ref="searchInputRef",
+          @click.stop
+        )
+      .ui-select__options
+        .ui-select__option(
+          v-for="option in filteredOptions",
+          :key="option.value",
+          :class="{ 'ui-select__option--selected': option.value === modelValue }",
+          @click.stop="selectOption(option.value)"
+        )
+          | {{ option.label }}
+        .ui-select__empty(v-if="filteredOptions.length === 0") Ничего не найдено
   
   span.ui-select__error(v-if="error") {{ error }}
 </template>
@@ -55,6 +61,7 @@ const selectContainerRef = ref<HTMLElement | null>(null)
 const triggerRef = ref<HTMLElement | null>(null)
 const dropdownRef = ref<HTMLElement | null>(null)
 const searchInputRef = ref<HTMLInputElement | null>(null)
+const dropdownStyle = ref<Record<string, string>>({})
 
 const displayValue = computed(() => {
   if (!props.modelValue) return props.placeholder || 'Выберите...'
@@ -68,11 +75,41 @@ const filteredOptions = computed(() => {
   return props.options.filter(o => o.label.toLowerCase().includes(q))
 })
 
+const updateDropdownPosition = () => {
+  if (!triggerRef.value) return
+  const rect = triggerRef.value.getBoundingClientRect()
+  const spaceBelow = window.innerHeight - rect.bottom
+  const spaceAbove = rect.top
+  const estimatedHeight = 220
+
+  const openUp = spaceBelow < estimatedHeight && spaceAbove > spaceBelow
+
+  dropdownStyle.value = {
+    position: 'fixed',
+    left: `${Math.max(8, rect.left)}px`,
+    width: `${rect.width}px`,
+    zIndex: '100050',
+    ...(openUp
+      ? {
+          bottom: `${Math.max(8, window.innerHeight - rect.top + 4)}px`,
+          top: 'auto',
+        }
+      : {
+          top: `${Math.min(window.innerHeight - 40, rect.bottom + 4)}px`,
+          bottom: 'auto',
+        }),
+  }
+}
+
 const toggle = () => {
   isOpen.value = !isOpen.value
   if (isOpen.value) {
+    updateDropdownPosition()
     nextTick(() => {
-      searchInputRef.value?.focus()
+      updateDropdownPosition()
+      if (props.searchable) {
+        searchInputRef.value?.focus()
+      }
     })
   } else {
     searchQuery.value = ''
@@ -87,17 +124,41 @@ const selectOption = (value: string) => {
 
 const handleClickOutside = (e: MouseEvent) => {
   const target = e.target as Node
-  if (selectContainerRef.value && !selectContainerRef.value.contains(target)) {
+  const inContainer = selectContainerRef.value?.contains(target)
+  const inDropdown = dropdownRef.value?.contains(target)
+  if (!inContainer && !inDropdown) {
     isOpen.value = false
     searchQuery.value = ''
   }
 }
 
+const handleKeydown = (e: KeyboardEvent) => {
+  if (e.key === 'Escape' && isOpen.value) {
+    isOpen.value = false
+    searchQuery.value = ''
+  }
+}
+
+const handleScroll = (e?: Event) => {
+  if (!isOpen.value) return
+  if (e && dropdownRef.value && dropdownRef.value.contains(e.target as Node)) {
+    return
+  }
+  updateDropdownPosition()
+}
+
 onMounted(() => {
   document.addEventListener('click', handleClickOutside)
+  document.addEventListener('keydown', handleKeydown)
+  window.addEventListener('scroll', handleScroll, true)
+  window.addEventListener('resize', handleScroll)
 })
+
 onBeforeUnmount(() => {
   document.removeEventListener('click', handleClickOutside)
+  document.removeEventListener('keydown', handleKeydown)
+  window.removeEventListener('scroll', handleScroll, true)
+  window.removeEventListener('resize', handleScroll)
 })
 </script>
 
@@ -158,10 +219,7 @@ onBeforeUnmount(() => {
   }
   
   &__dropdown {
-    position: absolute;
-    top: calc(100% + 4px);
-    left: 0;
-    width: 100%;
+    box-sizing: border-box;
     min-width: 180px;
     background-color: var(--color-bg-card);
     border: 1px solid var(--color-border);
@@ -171,7 +229,6 @@ onBeforeUnmount(() => {
     overflow: hidden;
     display: flex;
     flex-direction: column;
-    z-index: 1010;
   }
   
   &__search {

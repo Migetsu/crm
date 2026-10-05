@@ -122,6 +122,30 @@ export const useUsersStore = defineStore('users', () => {
     }
   }
 
+  const deleteUser = async (userId: string): Promise<boolean> => {
+    isLoading.value = true
+    error.value = null
+    try {
+      const headers = await getAuthHeaders()
+      const response = await $fetch<{ success: boolean; userId: string }>('/api/admin/delete-user', {
+        method: 'POST',
+        headers,
+        body: { userId },
+      })
+
+      if (response?.success) {
+        users.value = users.value.filter(u => u.id !== userId)
+        return true
+      }
+      return false
+    } catch (e: unknown) {
+      error.value = getErrorMessage(e)
+      throw e
+    } finally {
+      isLoading.value = false
+    }
+  }
+
   return {
     users,
     isLoading,
@@ -130,5 +154,6 @@ export const useUsersStore = defineStore('users', () => {
     createUser,
     updateRole,
     toggleActive,
+    deleteUser,
   }
 })

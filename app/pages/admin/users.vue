@@ -15,9 +15,9 @@
 
   //- Filters Bar
   .page-users__filters
-    .candidate-search__input-wrapper.page-users__search
-      Search.candidate-search__icon(:size="16")
-      input.candidate-search__input(
+    .page-users__search
+      Search.page-users__search-icon(:size="16")
+      input.page-users__search-input(
         v-model="searchQuery",
         placeholder="Поиск по ФИО или email..."
       )
@@ -109,6 +109,18 @@
               component(:is="u.is_active === false ? UserCheck : UserX", :size="14")
             | {{ u.is_active === false ? 'Разблокировать' : 'Блокировать' }}
 
+          UiButton(
+            v-if="canDelete(u)",
+            variant="ghost",
+            size="sm",
+            class="user-card__delete-btn",
+            title="Удалить пользователя",
+            @click="openDeleteModal(u)"
+          )
+            template(#icon)
+              Trash2(:size="14")
+            | Удалить
+
   //- Modal: Create New User
   UiModal(v-model="showCreateModal", title="Создание пользователя", size="md")
     .user-form
@@ -163,6 +175,13 @@
     size="sm"
   )
     .user-form(v-if="selectedUser")
+      .user-form__user-preview
+        .user-card__avatar(:class="`user-card__avatar--${selectedUser.role}`")
+          | {{ getInitials(selectedUser.full_name) }}
+        .user-form__user-details
+          span.user-form__user-name {{ selectedUser.full_name }}
+          span.user-form__user-email {{ selectedUser.email }}
+          span.user-form__current-role Текущая роль: {{ roleLabel(selectedUser.role) }}
       UiSelect(
         v-model="targetRole",
         label="Новая роль сотрудника *",
@@ -206,7 +225,7 @@
 import { ref, reactive, computed, onMounted } from 'vue'
 import {
   Plus, Search, ShieldCheck, ShieldAlert, UserCheck,
-  UserX, UserCog, Key, Users as UsersIcon,
+  UserX, UserCog, Key, Users as UsersIcon, Trash2,
 } from 'lucide-vue-next'
 import { format, parseISO } from 'date-fns'
 import { ru } from 'date-fns/locale'
@@ -214,12 +233,14 @@ import { useUsersStore } from '~/stores/users.store'
 import { useAuthStore } from '~/stores/auth.store'
 import { useToast } from '~/composables/useToast'
 import UiSkeleton from '~/components/ui/UiSkeleton/UiSkeleton.vue'
-import { ROLE_LABELS, canManageAccounts, canModifyUser } from '~/types/user.types'
+import { useConfirm } from '~/composables/useConfirm'
+import { ROLE_LABELS, canManageAccounts, canModifyUser, canDeleteUser } from '~/types/user.types'
 import type { UserRole, Profile } from '~/types/user.types'
 
 const usersStore = useUsersStore()
 const authStore = useAuthStore()
 const toast = useToast()
+const confirm = useConfirm()
 
 const searchQuery = ref('')
 const selectedRoleFilter = ref('all')
@@ -412,6 +433,33 @@ const confirmToggleActive = async () => {
     isSubmitting.value = false
   }
 }
+
+const canDelete = (u: Profile): boolean => {
+  return canDeleteUser(authStore.profile?.role, u.role, u.id === authStore.profile?.id)
+}
+
+const openDeleteModal = async (u: Profile) => {
+  const confirmed = await confirm.show({
+    title: 'Удалить пользователя?',
+    message: `Вы уверены, что хотите безвозвратно удалить учетную запись «${u.full_name}» (${u.email})? Это действие нельзя отменить.`,
+    confirmText: 'Удалить',
+    cancelText: 'Отмена',
+    variant: 'danger',
+    icon: 'trash',
+  })
+
+  if (!confirmed) return
+
+  isSubmitting.value = true
+  try {
+    await usersStore.deleteUser(u.id)
+    toast.success('Пользователь успешно удален')
+  } catch (err: unknown) {
+    toast.error(err instanceof Error ? err.message : 'Ошибка при удалении пользователя')
+  } finally {
+    isSubmitting.value = false
+  }
+}
 </script>
 
 <style lang="scss">
@@ -427,13 +475,47 @@ const confirmToggleActive = async () => {
     display: flex;
     gap: 12px;
     align-items: center;
-    margin-bottom: var(--spacing-4);
+    margin-bottom: var(--spacing-6);
+    background-color: var(--color-bg-card);
+    padding: 14px 16px;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
     flex-wrap: wrap;
   }
 
   &__search {
+    position: relative;
+    display: flex;
+    align-items: center;
     flex: 1;
     min-width: 260px;
+  }
+
+  &__search-icon {
+    position: absolute;
+    left: 12px;
+    color: var(--color-text-secondary);
+    pointer-events: none;
+  }
+
+  &__search-input {
+    width: 100%;
+    padding: 10px 14px 10px 36px;
+    background-color: var(--color-bg-body);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    color: var(--color-text-primary);
+    font-size: 14px;
+    outline: none;
+    transition: border-color 0.2s;
+
+    &:focus {
+      border-color: var(--color-primary);
+    }
+
+    &::placeholder {
+      color: var(--color-text-muted);
+    }
   }
 
   &__filter-selects {
@@ -607,12 +689,55 @@ const confirmToggleActive = async () => {
     align-items: center;
     gap: 6px;
   }
+
+  &__delete-btn {
+    color: var(--color-text-muted);
+
+    &:hover {
+      color: #ef4444 !important;
+      background-color: rgba(239, 68, 68, 0.1) !important;
+    }
+  }
 }
 
 .user-form {
   display: flex;
   flex-direction: column;
   gap: 14px;
+
+  &__user-preview {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px;
+    background-color: var(--color-bg-body);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+  }
+
+  &__user-details {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  &__user-name {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--color-text-primary);
+  }
+
+  &__user-email {
+    font-size: 12px;
+    color: var(--color-text-secondary);
+  }
+
+  &__current-role {
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--color-primary);
+    margin-top: 2px;
+  }
 
   &__password-field {
     display: flex;

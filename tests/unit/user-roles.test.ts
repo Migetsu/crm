@@ -6,6 +6,7 @@ import {
   canManageAccounts,
   canCreateAdmins,
   canModifyUser,
+  canDeleteUser,
 } from '~/types/user.types'
 
 describe('User Types & Permissions', () => {
@@ -48,5 +49,29 @@ describe('User Types & Permissions', () => {
 
     expect(canModifyUser('operator', 'operator')).toBe(false)
     expect(canModifyUser(null, 'operator')).toBe(false)
+  })
+
+  it('should validate deletion permissions in canDeleteUser', () => {
+    // Cannot delete oneself
+    expect(canDeleteUser('superadmin', 'superadmin', true)).toBe(false)
+    expect(canDeleteUser('admin', 'operator', true)).toBe(false)
+
+    // Cannot delete superadmin
+    expect(canDeleteUser('superadmin', 'superadmin', false)).toBe(false)
+    expect(canDeleteUser('admin', 'superadmin', false)).toBe(false)
+
+    // Superadmin can delete admin and operators
+    expect(canDeleteUser('superadmin', 'admin', false)).toBe(true)
+    expect(canDeleteUser('superadmin', 'operator', false)).toBe(true)
+    expect(canDeleteUser('superadmin', 'operator_director', false)).toBe(true)
+
+    // Admin can delete operators, but cannot delete admins or superadmins
+    expect(canDeleteUser('admin', 'operator', false)).toBe(true)
+    expect(canDeleteUser('admin', 'operator_director', false)).toBe(true)
+    expect(canDeleteUser('admin', 'admin', false)).toBe(false)
+
+    // Operator cannot delete anyone
+    expect(canDeleteUser('operator', 'operator', false)).toBe(false)
+    expect(canDeleteUser(null, 'operator', false)).toBe(false)
   })
 })

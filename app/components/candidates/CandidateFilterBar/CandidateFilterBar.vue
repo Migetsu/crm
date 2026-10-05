@@ -35,6 +35,14 @@
           span.candidate-filter-bar__toggle-text Список
         button.candidate-filter-bar__toggle-btn(
           type="button",
+          :class="{ 'candidate-filter-bar__toggle-btn--active': candidatesStore.viewMode === 'grid' }",
+          title="Сетка карточек",
+          @click="candidatesStore.setViewMode('grid')"
+        )
+          LayoutGrid(:size="16")
+          span.candidate-filter-bar__toggle-text Сетка
+        button.candidate-filter-bar__toggle-btn(
+          type="button",
           :class="{ 'candidate-filter-bar__toggle-btn--active': candidatesStore.viewMode === 'kanban' }",
           title="Канбан-доска",
           @click="candidatesStore.setViewMode('kanban')"
@@ -87,7 +95,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
-import { Search, X, RotateCcw, LayoutList, Kanban } from 'lucide-vue-next'
+import { Search, X, RotateCcw, LayoutList, LayoutGrid, Kanban } from 'lucide-vue-next'
 import { useCandidatesStore } from '~/stores/candidates.store'
 import { useVacanciesStore } from '~/stores/vacancies.store'
 import { STATUS_LABELS, SOURCE_LABELS } from '~/types/candidate.types'

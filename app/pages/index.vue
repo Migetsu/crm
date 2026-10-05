@@ -27,6 +27,13 @@
             .candidate-kanban__cards
               CandidateCardSkeleton(v-for="j in 2", :key="j", variant="kanban")
 
+    //- Grid Skeleton
+    template(v-else-if="candidatesStore.viewMode === 'grid'")
+      .page-candidates__count
+        UiSkeleton(width="180px", height="16px")
+      .page-candidates__grid
+        CandidateCardSkeleton(v-for="i in 8", :key="i", variant="grid")
+
     //- List Skeleton
     template(v-else)
       .page-candidates__count
@@ -42,17 +49,37 @@
       @edit="openEditModal"
     )
 
+    //- Empty State for Grid & List
+    template(v-else-if="candidatesStore.candidates.length === 0")
+      .page-candidates__count
+        | Всего найдено: 0 кандидатов
+      .page-candidates__empty
+        UserX(:size="48")
+        p Кандидаты не найдены
+        p.page-candidates__empty-hint Попробуйте изменить параметры фильтрации или поиска
+
+    //- Grid View
+    template(v-else-if="candidatesStore.viewMode === 'grid'")
+      .page-candidates__count
+        | Всего найдено: {{ candidatesStore.totalCount }} кандидатов
+
+      .page-candidates__grid
+        CandidateGridCard(
+          v-for="candidate in candidatesStore.candidates",
+          :key="candidate.id",
+          :candidate="candidate",
+          @status-change="openStatusModal(candidate)",
+          @edit="openEditModal(candidate)"
+        )
+
+      CandidatePagination
+
     //- List View
     template(v-else)
       .page-candidates__count
         | Всего найдено: {{ candidatesStore.totalCount }} кандидатов
 
-      .page-candidates__empty(v-if="candidatesStore.candidates.length === 0")
-        UserX(:size="48")
-        p Кандидаты не найдены
-        p.page-candidates__empty-hint Попробуйте изменить параметры фильтрации или поиска
-
-      .page-candidates__list(v-else)
+      .page-candidates__list
         CandidateCard(
           v-for="candidate in candidatesStore.candidates",
           :key="candidate.id",
@@ -82,6 +109,7 @@ import { ref, onMounted } from 'vue'
 import { Plus, UserX } from 'lucide-vue-next'
 import { useCandidatesStore } from '~/stores/candidates.store'
 import CandidateCardSkeleton from '~/components/candidates/CandidateCardSkeleton/CandidateCardSkeleton.vue'
+import CandidateGridCard from '~/components/candidates/CandidateGridCard/CandidateGridCard.vue'
 import UiSkeleton from '~/components/ui/UiSkeleton/UiSkeleton.vue'
 import type { Candidate, CandidateStatus } from '~/types/candidate.types'
 
@@ -191,6 +219,24 @@ const handleCandidateUpdated = async () => {
     display: flex;
     flex-direction: column;
     gap: 12px;
+  }
+
+  &__grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+
+    @media (max-width: 1280px) {
+      grid-template-columns: repeat(3, 1fr);
+    }
+
+    @media (max-width: 900px) {
+      grid-template-columns: repeat(2, 1fr);
+    }
+
+    @media (max-width: 560px) {
+      grid-template-columns: 1fr;
+    }
   }
 }
 

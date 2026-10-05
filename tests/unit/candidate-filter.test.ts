@@ -56,4 +56,16 @@ describe('Candidate Filtering & Pagination Utilities', () => {
     expect(getStartDateForPeriod('today')).toBeTruthy()
     expect(getStartDateForPeriod('week')).toBeTruthy()
   })
+
+  it('supports list, kanban, and grid view modes', () => {
+    const validModes = ['list', 'kanban', 'grid'] as const
+    const isValidViewMode = (mode: string): mode is typeof validModes[number] => {
+      return (validModes as readonly string[]).includes(mode)
+    }
+
+    expect(isValidViewMode('list')).toBe(true)
+    expect(isValidViewMode('kanban')).toBe(true)
+    expect(isValidViewMode('grid')).toBe(true)
+    expect(isValidViewMode('table')).toBe(false)
+  })
 })

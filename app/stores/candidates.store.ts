@@ -6,6 +6,7 @@ import type {
   CandidateCreatePayload,
   CandidateStatus,
   CandidateFilterParams,
+  CandidateViewMode,
 } from '~/types/candidate.types'
 import { getErrorMessage } from '~/utils/error'
 
@@ -20,7 +21,7 @@ export const useCandidatesStore = defineStore('candidates', () => {
   const error = ref<string | null>(null)
 
   // View mode
-  const viewMode = ref<'list' | 'kanban'>('list')
+  const viewMode = ref<CandidateViewMode>('list')
 
   // Pagination
   const page = ref(1)
@@ -96,7 +97,7 @@ export const useCandidatesStore = defineStore('candidates', () => {
     await fetchWithFilters()
   }
 
-  const setViewMode = async (mode: 'list' | 'kanban') => {
+  const setViewMode = async (mode: CandidateViewMode) => {
     viewMode.value = mode
     await fetchWithFilters()
   }

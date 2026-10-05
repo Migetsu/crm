@@ -11,6 +11,23 @@
     UiSkeleton(width="35%", height="11px")
     UiSkeleton(width="25%", height="11px")
 
+//- Grid Card Skeleton
+article.candidate-grid-card.candidate-card-skeleton(v-else-if="variant === 'grid'", aria-hidden="true")
+  .candidate-grid-card__header
+    UiSkeleton(width="40px", height="40px", border-radius="50%", variant="circle")
+    .candidate-grid-card__header-right(style="display: flex; gap: 6px; align-items: center;")
+      UiSkeleton(width="80px", height="20px", border-radius="12px")
+      UiSkeleton(width="28px", height="28px", border-radius="6px")
+  .candidate-grid-card__body(style="display: flex; flex-direction: column; gap: 8px; margin-top: 8px;")
+    UiSkeleton(width="80%", height="16px")
+    UiSkeleton(width="60%", height="18px", border-radius="4px")
+    .candidate-grid-card__contacts(style="display: flex; flex-direction: column; gap: 6px; margin-top: 4px;")
+      UiSkeleton(width="65%", height="12px")
+      UiSkeleton(width="85%", height="12px")
+  .candidate-grid-card__footer(style="margin-top: 8px; display: flex; flex-direction: column; gap: 10px;")
+    UiSkeleton(width="50%", height="12px")
+    UiSkeleton(width="100%", height="32px", border-radius="6px")
+
 //- List Card Skeleton
 article.candidate-card.candidate-card-skeleton(v-else, aria-hidden="true")
   .candidate-card__left
@@ -31,7 +48,7 @@ import UiSkeleton from '~/components/ui/UiSkeleton/UiSkeleton.vue'
 
 withDefaults(
   defineProps<{
-    variant?: 'list' | 'kanban'
+    variant?: 'list' | 'kanban' | 'grid'
   }>(),
   {
     variant: 'list',

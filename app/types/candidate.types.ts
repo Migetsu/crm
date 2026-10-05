@@ -9,6 +9,7 @@ export type CandidateStatus =
 export type CandidateSource = 'hh' | 'avito'
 export type CandidateAddMethod = 'manual' | 'response'
 export type CandidateGender = 'male' | 'female'
+export type CandidateViewMode = 'list' | 'kanban' | 'grid'
 
 export type CandidateSortOption =
   | 'created_at_desc'

@@ -74,13 +74,11 @@
 import { ref, onMounted } from 'vue'
 import { Plus, UserX } from 'lucide-vue-next'
 import { useCandidatesStore } from '~/stores/candidates.store'
-import { useToast } from '~/composables/useToast'
 import CandidateCardSkeleton from '~/components/candidates/CandidateCardSkeleton/CandidateCardSkeleton.vue'
 import UiSkeleton from '~/components/ui/UiSkeleton/UiSkeleton.vue'
 import type { Candidate, CandidateStatus } from '~/types/candidate.types'
 
 const candidatesStore = useCandidatesStore()
-const toast = useToast()
 
 const showAddModal = ref(false)
 const showStatusModal = ref(false)
@@ -99,12 +97,10 @@ const openStatusModal = (candidate: Candidate, targetStatus?: CandidateStatus) =
 
 const handleStatusUpdated = async () => {
   await candidatesStore.fetchWithFilters()
-  toast.success('Статус кандидата успешно обновлен')
 }
 
 const handleCandidateCreated = async () => {
   await candidatesStore.fetchWithFilters()
-  toast.success('Кандидат успешно добавлен в базу')
 }
 </script>
 

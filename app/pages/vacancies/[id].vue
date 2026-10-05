@@ -276,7 +276,6 @@ const toggle = async () => {
 
 const handleCandidateCreated = async () => {
   await loadCandidates()
-  toast.success('Кандидат успешно добавлен к вакансии')
 }
 
 const openStatusModal = (candidate: Candidate) => {

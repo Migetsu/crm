@@ -171,6 +171,7 @@ const emit = defineEmits<{
 }>()
 
 const isOpen = defineModel<boolean>()
+const toast = useToast()
 const candidatesStore = useCandidatesStore()
 const orgUnitsStore = useOrgUnitsStore()
 const supabase = useSupabaseClient()
@@ -391,7 +392,17 @@ const handleSave = async () => {
       
       isOpen.value = false
       emit('updated')
+      const label = STATUS_LABELS[selectedStatus.value as CandidateStatus] || selectedStatus.value
+      toast.success(`Статус кандидата изменён на «${label}»`)
+      if (selectedStatus.value === 'interview_scheduled' && sendNotification.value && notificationMessage.value.trim()) {
+        toast.info(notificationChannel.value === 'sms' ? 'SMS-приглашение отправлено' : 'Email-приглашение отправлено')
+      }
+    } else {
+      toast.error('Не удалось изменить статус кандидата')
     }
+  } catch (err: unknown) {
+    toast.error('Ошибка при смене статуса кандидата')
+    console.error(err)
   } finally {
     isSaving.value = false
   }

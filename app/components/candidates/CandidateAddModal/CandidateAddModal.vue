@@ -112,12 +112,18 @@ import { useVacanciesStore } from '~/stores/vacancies.store'
 import { HistoryService } from '~/services/history.service'
 import { StorageService } from '~/services/storage.service'
 import { CITIZENSHIP_LABELS, GENDER_LABELS, SOURCE_LABELS, ADD_METHOD_LABELS } from '~/types/candidate.types'
-import type { CandidateCreatePayload, Citizenship, CandidateGender, CandidateSource, CandidateAddMethod } from '~/types/candidate.types'
+import type { Candidate, CandidateCreatePayload, Citizenship, CandidateGender, CandidateSource, CandidateAddMethod } from '~/types/candidate.types'
+import { useToast } from '~/composables/useToast'
 
 const isOpen = defineModel<boolean>()
+const emit = defineEmits<{
+  (e: 'created', candidate: Candidate): void
+}>()
+
 const router = useRouter()
 const candidatesStore = useCandidatesStore()
 const vacanciesStore = useVacanciesStore()
+const toast = useToast()
 const supabase = useSupabaseClient()
 const user = useSupabaseUser()
 const historyService = new HistoryService(supabase)
@@ -237,9 +243,16 @@ const handleSubmit = async () => {
         meta: { status: 'new' },
       })
       
+      emit('created', candidate)
+      toast.success('Кандидат успешно добавлен')
       isOpen.value = false
       router.push(`/candidates/${candidate.id}`)
+    } else {
+      toast.error('Не удалось сохранить кандидата')
     }
+  } catch (err: unknown) {
+    toast.error('Произошла ошибка при сохранении кандидата')
+    console.error(err)
   } finally {
     isSubmitting.value = false
   }

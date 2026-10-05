@@ -94,6 +94,7 @@ const emit = defineEmits<{
 const isOpen = defineModel<boolean>()
 const supabase = useSupabaseClient()
 const user = useSupabaseUser()
+const toast = useToast()
 const templatesService = new TemplatesService(supabase)
 const historyService = new HistoryService(supabase)
 
@@ -238,6 +239,10 @@ const handleSend = async () => {
 
     isOpen.value = false
     emit('sent')
+    toast.success(props.type === 'sms' ? 'SMS-сообщение кандидату отправлено' : 'Email кандидату отправлен')
+  } catch (err: unknown) {
+    toast.error('Не удалось отправить сообщение')
+    console.error(err)
   } finally {
     isSubmitting.value = false
   }

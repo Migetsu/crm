@@ -4,6 +4,10 @@
     button.page-candidate__back(@click="$router.push('/')")
       ArrowLeft(:size="18")
       | Назад к витрине
+    UiButton(variant="danger", size="sm", @click="handleDeleteCandidate")
+      template(#icon)
+        Trash2(:size="15")
+      | Удалить кандидата
       
   .page-candidate__layout
     //- Left panel
@@ -288,14 +292,45 @@
       UiButton(variant="secondary", @click="showCommentModal = false") Отмена
       UiButton(variant="primary", :disabled="!commentText.trim()", @click="addComment") Сохранить
 
-.page-candidate__loading(v-else-if="candidatesStore.isLoading")
-  .page-candidates__spinner
-  | Загрузка...
+.page-candidate.page-candidate--skeleton(v-else-if="candidatesStore.isLoading", aria-hidden="true")
+  .page-candidate__top
+    UiSkeleton(width="140px", height="24px")
+  .page-candidate__layout
+    .page-candidate__left
+      .page-candidate__profile
+        UiSkeleton(width="72px", height="72px", border-radius="50%", variant="circle")
+        .page-candidate__details(style="display: flex; flex-direction: column; gap: 8px; flex: 1;")
+          UiSkeleton(width="260px", height="28px")
+          UiSkeleton(width="180px", height="16px")
+          .page-candidate__contacts(style="display: flex; gap: 16px; margin-top: 4px;")
+            UiSkeleton(width="130px", height="16px")
+            UiSkeleton(width="150px", height="16px")
+      .page-candidate__actions(style="display: flex; gap: 8px;")
+        UiSkeleton(width="110px", height="32px", border-radius="6px")
+        UiSkeleton(width="130px", height="32px", border-radius="6px")
+        UiSkeleton(width="130px", height="32px", border-radius="6px")
+        UiSkeleton(width="100px", height="32px", border-radius="6px")
+      .page-candidate__tabs(style="display: flex; gap: 8px; margin-top: 10px;")
+        UiSkeleton(width="90px", height="36px", border-radius="8px")
+        UiSkeleton(width="110px", height="36px", border-radius="8px")
+        UiSkeleton(width="100px", height="36px", border-radius="8px")
+        UiSkeleton(width="90px", height="36px", border-radius="8px")
+      .page-candidate__tab-content(style="margin-top: 10px;")
+        UiSkeleton(width="100%", height="260px", border-radius="12px")
+    .page-candidate__right
+      .page-candidate__status-card(style="display: flex; flex-direction: column; gap: 14px;")
+        UiSkeleton(width="120px", height="16px")
+        UiSkeleton(width="100%", height="38px", border-radius="8px")
+        UiSkeleton(width="100%", height="42px", border-radius="8px")
+      .page-candidate__vacancy-card(style="margin-top: 20px; display: flex; flex-direction: column; gap: 12px;")
+        UiSkeleton(width="140px", height="16px")
+        UiSkeleton(width="100%", height="22px")
+        UiSkeleton(width="80%", height="14px")
 </template>
 
 <script setup lang="ts">
 import { ref, computed, reactive, onMounted } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import {
   ArrowLeft, Phone, Mail, MapPin, MessageSquare, Clock, PhoneCall,
   MessageCircle, Paperclip, ShieldCheck, FileText, Download, ExternalLink, Trash2,
@@ -303,10 +338,13 @@ import {
 import { format, differenceInYears } from 'date-fns'
 import { ru } from 'date-fns/locale'
 import { useCandidatesStore } from '~/stores/candidates.store'
+import { useToast } from '~/composables/useToast'
+import { useConfirm } from '~/composables/useConfirm'
 import { VacanciesService } from '~/services/vacancies.service'
 import { HistoryService } from '~/services/history.service'
 import { StorageService, type StorageFileItem } from '~/services/storage.service'
 import { formatFileSize } from '~/utils/file-validation'
+import UiSkeleton from '~/components/ui/UiSkeleton/UiSkeleton.vue'
 import {
   STATUS_LABELS, STATUS_COLORS, CITIZENSHIP_LABELS, GENDER_LABELS,
   SOURCE_LABELS, ADD_METHOD_LABELS, REJECTED_LABELS, SELF_REJECTED_LABELS,
@@ -317,7 +355,10 @@ import type { Vacancy } from '~/types/vacancy.types'
 import type { TemplateType } from '~/types/template.types'
 
 const route = useRoute()
+const router = useRouter()
 const candidatesStore = useCandidatesStore()
+const toast = useToast()
+const confirm = useConfirm()
 const supabase = useSupabaseClient()
 const user = useSupabaseUser()
 const vacanciesService = new VacanciesService(supabase)
@@ -548,6 +589,10 @@ const saveConsent = async (granted: boolean) => {
     })
     consentForm.comment = ''
     await refreshData()
+    toast.success(granted ? 'Согласие на обработку ПДн зафиксировано' : 'Согласие на обработку ПДн отозвано')
+  } catch (err: unknown) {
+    toast.error('Не удалось зафиксировать согласие')
+    console.error(err)
   } finally {
     isSubmittingConsent.value = false
   }
@@ -573,7 +618,9 @@ const handleResumeUpload = async (file: File | null) => {
       },
     })
     await refreshData()
-  } catch (err) {
+    toast.success('Файл резюме успешно обновлен')
+  } catch (err: unknown) {
+    toast.error('Не удалось загрузить файл резюме')
     console.error('Failed to upload resume:', err)
   } finally {
     isUploadingResume.value = false
@@ -598,7 +645,9 @@ const handleAttachmentUpload = async (file: File | null) => {
       },
     })
     await refreshData()
-  } catch (err) {
+    toast.success('Вложение успешно добавлено')
+  } catch (err: unknown) {
+    toast.error('Не удалось прикрепить файл')
     console.error('Failed to upload attachment:', err)
   } finally {
     isUploadingAttachment.value = false
@@ -606,7 +655,17 @@ const handleAttachmentUpload = async (file: File | null) => {
 }
 
 const deleteAttachment = async (item: StorageFileItem) => {
-  if (!confirm(`Удалить файл «${item.name}»?`) || !candidate.value) return
+  if (!candidate.value) return
+  const confirmed = await confirm.confirm({
+    title: 'Удаление вложения',
+    message: `Вы уверены, что хотите удалить файл «${item.name}»? Это действие нельзя отменить.`,
+    confirmText: 'Удалить файл',
+    cancelText: 'Отмена',
+    variant: 'danger',
+    icon: 'trash',
+  })
+  if (!confirmed) return
+
   try {
     await storageService.deleteResume(item.path)
     await historyService.create({
@@ -618,30 +677,67 @@ const deleteAttachment = async (item: StorageFileItem) => {
       meta: { file_name: item.name },
     })
     await refreshData()
-  } catch (err) {
+    toast.success(`Файл «${item.name}» удален`)
+  } catch (err: unknown) {
+    toast.error('Не удалось удалить файл')
     console.error('Failed to delete attachment:', err)
+  }
+}
+
+const handleDeleteCandidate = async () => {
+  if (!candidate.value) return
+  const confirmed = await confirm.confirm({
+    title: 'Удаление кандидата',
+    message: `Вы действительно хотите удалить кандидата «${fullName.value}»? Вся история и прикрепленные файлы будут безвозвратно удалены.`,
+    confirmText: 'Удалить кандидата',
+    cancelText: 'Отмена',
+    variant: 'danger',
+    icon: 'trash',
+  })
+  if (!confirmed) return
+
+  try {
+    const success = await candidatesStore.deleteCandidate(candidate.value.id)
+    if (success) {
+      toast.success('Кандидат успешно удален')
+      router.push('/')
+    } else {
+      toast.error('Не удалось удалить кандидата')
+    }
+  } catch (err: unknown) {
+    toast.error('Ошибка при удалении кандидата')
+    console.error(err)
   }
 }
 
 const addComment = async () => {
   if (!candidate.value || !commentText.value.trim()) return
-  await historyService.create({
-    candidate_id: candidate.value.id,
-    type: 'comment',
-    title: 'Заметка о кандидате',
-    body: commentText.value.trim(),
-    created_by: user.value?.id || null,
-    meta: null,
-  })
-  showCommentModal.value = false
-  commentText.value = ''
-  history.value = await historyService.fetchByCandidateId(candidate.value.id)
+  try {
+    await historyService.create({
+      candidate_id: candidate.value.id,
+      type: 'comment',
+      title: 'Заметка о кандидате',
+      body: commentText.value.trim(),
+      created_by: user.value?.id || null,
+      meta: null,
+    })
+    showCommentModal.value = false
+    commentText.value = ''
+    history.value = await historyService.fetchByCandidateId(candidate.value.id)
+    toast.success('Заметка о кандидате добавлена')
+  } catch (err: unknown) {
+    toast.error('Не удалось сохранить заметку')
+    console.error(err)
+  }
 }
 </script>
 
 <style lang="scss">
 .page-candidate {
   &__top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
     margin-bottom: var(--spacing-6);
   }
   

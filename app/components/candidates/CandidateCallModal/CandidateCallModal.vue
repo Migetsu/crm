@@ -44,6 +44,7 @@ const emit = defineEmits<{
 const isOpen = defineModel<boolean>()
 const supabase = useSupabaseClient()
 const user = useSupabaseUser()
+const toast = useToast()
 const historyService = new HistoryService(supabase)
 
 const callResult = ref('connected')
@@ -86,6 +87,10 @@ const handleSave = async () => {
 
     isOpen.value = false
     emit('logged')
+    toast.success('Результат звонка сохранён в истории')
+  } catch (err: unknown) {
+    toast.error('Не удалось сохранить информацию о звонке')
+    console.error(err)
   } finally {
     isSubmitting.value = false
   }

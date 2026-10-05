@@ -12,9 +12,27 @@
 
   CandidateFilterBar
 
-  .page-candidates__loading(v-if="candidatesStore.isLoading")
-    .page-candidates__spinner
-    | Загрузка кандидатов...
+  //- Skeleton Loaders when loading
+  template(v-if="candidatesStore.isLoading")
+    //- Kanban Skeleton
+    .candidate-kanban(v-if="candidatesStore.viewMode === 'kanban'")
+      .candidate-kanban__board
+        .candidate-kanban__column(v-for="i in 5", :key="i")
+          .candidate-kanban__column-header
+            .candidate-kanban__column-title(style="display: flex; align-items: center; gap: 8px; width: 100%;")
+              UiSkeleton(width="10px", height="10px", border-radius="50%", variant="circle")
+              UiSkeleton(width="90px", height="16px")
+            UiSkeleton(width="24px", height="18px", border-radius="10px")
+          .candidate-kanban__column-body
+            .candidate-kanban__cards
+              CandidateCardSkeleton(v-for="j in 2", :key="j", variant="kanban")
+
+    //- List Skeleton
+    template(v-else)
+      .page-candidates__count
+        UiSkeleton(width="180px", height="16px")
+      .page-candidates__list
+        CandidateCardSkeleton(v-for="i in 5", :key="i", variant="list")
 
   template(v-else)
     //- Kanban View
@@ -43,7 +61,7 @@
 
       CandidatePagination
 
-  CandidateAddModal(v-model="showAddModal")
+  CandidateAddModal(v-model="showAddModal", @created="handleCandidateCreated")
   CandidateStatusModal(
     v-model="showStatusModal",
     :candidate="selectedCandidate",
@@ -56,9 +74,13 @@
 import { ref, onMounted } from 'vue'
 import { Plus, UserX } from 'lucide-vue-next'
 import { useCandidatesStore } from '~/stores/candidates.store'
+import { useToast } from '~/composables/useToast'
+import CandidateCardSkeleton from '~/components/candidates/CandidateCardSkeleton/CandidateCardSkeleton.vue'
+import UiSkeleton from '~/components/ui/UiSkeleton/UiSkeleton.vue'
 import type { Candidate, CandidateStatus } from '~/types/candidate.types'
 
 const candidatesStore = useCandidatesStore()
+const toast = useToast()
 
 const showAddModal = ref(false)
 const showStatusModal = ref(false)
@@ -77,6 +99,12 @@ const openStatusModal = (candidate: Candidate, targetStatus?: CandidateStatus) =
 
 const handleStatusUpdated = async () => {
   await candidatesStore.fetchWithFilters()
+  toast.success('Статус кандидата успешно обновлен')
+}
+
+const handleCandidateCreated = async () => {
+  await candidatesStore.fetchWithFilters()
+  toast.success('Кандидат успешно добавлен в базу')
 }
 </script>
 

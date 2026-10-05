@@ -31,9 +31,20 @@
         placeholder="Все статусы"
       )
       
-  .page-vacancies__loading(v-if="vacanciesStore.isLoading")
-    .page-candidates__spinner
-    | Загрузка вакансий...
+  .page-vacancies__list(v-if="vacanciesStore.isLoading", aria-hidden="true")
+    .vacancy-card(v-for="i in 3", :key="i", style="pointer-events: none;")
+      .vacancy-card__left(style="width: 100%;")
+        .vacancy-card__title-row(style="display: flex; gap: 12px; margin-bottom: 8px;")
+          UiSkeleton(width="220px", height="20px")
+          UiSkeleton(width="80px", height="20px")
+        .vacancy-card__org-unit(style="display: flex; gap: 8px; margin-bottom: 12px;")
+          UiSkeleton(width="140px", height="14px")
+          UiSkeleton(width="180px", height="14px")
+        UiSkeleton(width="90%", height="14px", style="margin-bottom: 12px;")
+        .vacancy-card__counters(style="display: flex; gap: 12px;")
+          UiSkeleton(width="70px", height="24px")
+          UiSkeleton(width="60px", height="24px")
+          UiSkeleton(width="60px", height="24px")
     
   .page-vacancies__empty(v-else-if="filteredVacancies.length === 0")
     Briefcase(:size="48")
@@ -117,10 +128,13 @@ import { ref, reactive, computed, onMounted } from 'vue'
 import { Plus, Search, Briefcase, Building2, MapPin, Users } from 'lucide-vue-next'
 import { useVacanciesStore } from '~/stores/vacancies.store'
 import { useOrgUnitsStore } from '~/stores/org-units.store'
+import { useToast } from '~/composables/useToast'
+import UiSkeleton from '~/components/ui/UiSkeleton/UiSkeleton.vue'
 import type { Vacancy } from '~/types/vacancy.types'
 
 const vacanciesStore = useVacanciesStore()
 const orgUnitsStore = useOrgUnitsStore()
+const toast = useToast()
 
 const searchQuery = ref('')
 const selectedOrgUnitFilter = ref('')
@@ -177,14 +191,19 @@ const debouncedSearch = () => {
 }
 
 const toggleVacancy = async (v: Vacancy) => {
-  await vacanciesStore.toggleOpen(v.id, !v.is_open)
+  const success = await vacanciesStore.toggleOpen(v.id, !v.is_open)
+  if (success) {
+    toast.success(v.is_open ? 'Вакансия закрыта' : 'Вакансия открыта')
+  } else {
+    toast.error('Не удалось изменить статус вакансии')
+  }
 }
 
 const createVacancy = async () => {
   if (!newVacancy.title.trim()) return
   isSubmitting.value = true
   try {
-    await vacanciesStore.create({
+    const res = await vacanciesStore.create({
       title: newVacancy.title.trim(),
       description: newVacancy.description.trim() || null,
       requirements: newVacancy.requirements.trim() || null,
@@ -192,12 +211,20 @@ const createVacancy = async () => {
       org_unit_id: newVacancy.org_unit_id || null,
       is_open: true,
     })
-    showCreateModal.value = false
-    newVacancy.title = ''
-    newVacancy.description = ''
-    newVacancy.requirements = ''
-    newVacancy.responsibilities = ''
-    newVacancy.org_unit_id = ''
+    if (res) {
+      toast.success('Вакансия успешно создана')
+      showCreateModal.value = false
+      newVacancy.title = ''
+      newVacancy.description = ''
+      newVacancy.requirements = ''
+      newVacancy.responsibilities = ''
+      newVacancy.org_unit_id = ''
+    } else {
+      toast.error('Не удалось создать вакансию')
+    }
+  } catch (err: unknown) {
+    toast.error('Ошибка при создании вакансии')
+    console.error(err)
   } finally {
     isSubmitting.value = false
   }

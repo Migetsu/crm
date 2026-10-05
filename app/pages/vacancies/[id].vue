@@ -154,8 +154,27 @@
 
   //- Add Candidate Modal
   CandidateAddModal(
-    v-model="showAddCandidateModal"
+    v-model="showAddCandidateModal",
+    @created="handleCandidateCreated"
   )
+
+.page-vacancy.page-vacancy--skeleton(v-else-if="vacanciesStore.isLoading", aria-hidden="true")
+  .page-vacancy__top
+    UiSkeleton(width="140px", height="24px")
+  .page-vacancy__header(style="margin-bottom: 24px;")
+    .page-vacancy__headline(style="display: flex; flex-direction: column; gap: 8px;")
+      UiSkeleton(width="300px", height="32px")
+      UiSkeleton(width="200px", height="18px")
+  .page-vacancy__info-grid(style="margin-bottom: 24px;")
+    .page-vacancy__card(style="display: flex; flex-direction: column; gap: 12px;")
+      UiSkeleton(width="160px", height="20px")
+      UiSkeleton(width="100%", height="60px")
+    .page-vacancy__card(style="display: flex; flex-direction: column; gap: 12px;")
+      UiSkeleton(width="160px", height="20px")
+      UiSkeleton(width="100%", height="60px")
+  .page-vacancy__candidates
+    UiSkeleton(width="180px", height="22px", style="margin-bottom: 16px;")
+    CandidateCardSkeleton(v-for="i in 3", :key="i", variant="list")
 </template>
 
 <script setup lang="ts">
@@ -163,6 +182,9 @@ import { ref, computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { ArrowLeft, Building2, MapPin, Plus, UserX, UserCheck } from 'lucide-vue-next'
 import { useVacanciesStore } from '~/stores/vacancies.store'
+import { useToast } from '~/composables/useToast'
+import UiSkeleton from '~/components/ui/UiSkeleton/UiSkeleton.vue'
+import CandidateCardSkeleton from '~/components/candidates/CandidateCardSkeleton/CandidateCardSkeleton.vue'
 import { calculateVacancyStats } from '~/utils/vacancy-stats'
 import type { Candidate } from '~/types/candidate.types'
 
@@ -240,9 +262,21 @@ onMounted(async () => {
   await loadCandidates()
 })
 
+const toast = useToast()
+
 const toggle = async () => {
   if (!vacancy.value) return
-  await vacanciesStore.toggleOpen(vacancy.value.id, !vacancy.value.is_open)
+  const success = await vacanciesStore.toggleOpen(vacancy.value.id, !vacancy.value.is_open)
+  if (success) {
+    toast.success(vacancy.value.is_open ? 'Вакансия открыта' : 'Вакансия закрыта')
+  } else {
+    toast.error('Не удалось изменить статус вакансии')
+  }
+}
+
+const handleCandidateCreated = async () => {
+  await loadCandidates()
+  toast.success('Кандидат успешно добавлен к вакансии')
 }
 
 const openStatusModal = (candidate: Candidate) => {

@@ -18,9 +18,17 @@
         @input="debouncedSearch"
       )
       
-  .page-vacancies__loading(v-if="orgUnitsStore.isLoading && !orgUnitsStore.orgUnits.length")
-    .page-candidates__spinner
-    | Загрузка подразделений...
+  .page-org-units__list(v-if="orgUnitsStore.isLoading && !orgUnitsStore.orgUnits.length", aria-hidden="true")
+    .org-unit-card(v-for="i in 3", :key="i", style="pointer-events: none;")
+      .org-unit-card__header
+        .org-unit-card__title-row(style="display: flex; gap: 12px; width: 60%;")
+          UiSkeleton(width="220px", height="22px")
+          UiSkeleton(width="80px", height="20px", border-radius="12px")
+        .org-unit-card__actions
+          UiSkeleton(width="140px", height="32px", border-radius="6px")
+      .org-unit-card__body(style="margin-top: 14px; display: flex; flex-direction: column; gap: 10px;")
+        UiSkeleton(width="70%", height="14px")
+        UiSkeleton(width="50%", height="14px")
     
   .page-vacancies__empty(v-else-if="orgUnitsStore.orgUnits.length === 0")
     MapPin(:size="48")
@@ -187,10 +195,15 @@
 import { ref, reactive, computed, onMounted } from 'vue'
 import { Plus, Search, MapPin, Users, UserCheck, Trash2 } from 'lucide-vue-next'
 import { useOrgUnitsStore } from '~/stores/org-units.store'
+import { useToast } from '~/composables/useToast'
+import { useConfirm } from '~/composables/useConfirm'
+import UiSkeleton from '~/components/ui/UiSkeleton/UiSkeleton.vue'
 import type { OrgUnit, ManagerRole } from '~/types/org-unit.types'
 import { getManagerRoleLabel } from '~/utils/manager-roles'
 
 const orgUnitsStore = useOrgUnitsStore()
+const toast = useToast()
+const confirm = useConfirm()
 const searchQuery = ref('')
 const showCreateModal = ref(false)
 const showManagersModal = ref(false)
@@ -262,21 +275,43 @@ const openManagersModal = (unit: OrgUnit) => {
 
 const handleAddManager = async () => {
   if (!activeUnit.value || !isNewManagerValid.value) return
-  await orgUnitsStore.addManager({
-    org_unit_id: activeUnit.value.id,
-    full_name: newManager.full_name.trim(),
-    email: newManager.email.trim(),
-    phone: newManager.phone.trim(),
-    role: newManager.role,
-  })
-  newManager.full_name = ''
-  newManager.email = ''
-  newManager.phone = ''
+  try {
+    await orgUnitsStore.addManager({
+      org_unit_id: activeUnit.value.id,
+      full_name: newManager.full_name.trim(),
+      email: newManager.email.trim(),
+      phone: newManager.phone.trim(),
+      role: newManager.role,
+    })
+    newManager.full_name = ''
+    newManager.email = ''
+    newManager.phone = ''
+    toast.success('Сотрудник успешно прикреплен к подразделению')
+  } catch (err: unknown) {
+    toast.error('Не удалось добавить сотрудника')
+    console.error(err)
+  }
 }
 
 const handleRemoveManager = async (managerId: string) => {
   if (!activeUnit.value) return
-  await orgUnitsStore.removeManager(activeUnit.value.id, managerId)
+  const confirmed = await confirm.confirm({
+    title: 'Удаление сотрудника',
+    message: 'Вы уверены, что хотите открепить этого сотрудника от подразделения?',
+    confirmText: 'Открепить',
+    cancelText: 'Отмена',
+    variant: 'danger',
+    icon: 'trash',
+  })
+  if (!confirmed) return
+
+  try {
+    await orgUnitsStore.removeManager(activeUnit.value.id, managerId)
+    toast.success('Сотрудник успешно откреплен')
+  } catch (err: unknown) {
+    toast.error('Не удалось открепить сотрудника')
+    console.error(err)
+  }
 }
 
 const createUnit = async () => {
@@ -285,41 +320,47 @@ const createUnit = async () => {
   const clusterDirectorName = newUnit.cluster_director_full_name.trim() || newUnit.director_full_name.trim()
   const clusterDirectorEmail = newUnit.cluster_director_email.trim() || newUnit.director_email.trim()
 
-  await orgUnitsStore.create({
-    name: newUnit.name.trim(),
-    category: newUnit.category.trim() || null,
-    interview_address: newUnit.interview_address.trim(),
-    director_full_name: newUnit.director_full_name.trim(),
-    director_email: newUnit.director_email.trim(),
-    director_phone: newUnit.director_phone.trim(),
-    cluster_director_full_name: clusterDirectorName,
-    cluster_director_email: clusterDirectorEmail,
-    hr_full_name: null,
-    hr_email: null,
-    hr_phone: null,
-    regional_office: null,
-    territory: null,
-    macroregion: null,
-    division: null,
-    cluster: null,
-    sap_id: null,
-    cfo: null,
-    opened_at: null,
-    timezone: 'Europe/Moscow',
-    actual_location: null,
-  })
+  try {
+    await orgUnitsStore.create({
+      name: newUnit.name.trim(),
+      category: newUnit.category.trim() || null,
+      interview_address: newUnit.interview_address.trim(),
+      director_full_name: newUnit.director_full_name.trim(),
+      director_email: newUnit.director_email.trim(),
+      director_phone: newUnit.director_phone.trim(),
+      cluster_director_full_name: clusterDirectorName,
+      cluster_director_email: clusterDirectorEmail,
+      hr_full_name: null,
+      hr_email: null,
+      hr_phone: null,
+      regional_office: null,
+      territory: null,
+      macroregion: null,
+      division: null,
+      cluster: null,
+      sap_id: null,
+      cfo: null,
+      opened_at: null,
+      timezone: 'Europe/Moscow',
+      actual_location: null,
+    })
 
-  showCreateModal.value = false
-  Object.assign(newUnit, {
-    name: '',
-    category: '',
-    interview_address: '',
-    director_full_name: '',
-    director_email: '',
-    director_phone: '',
-    cluster_director_full_name: '',
-    cluster_director_email: '',
-  })
+    showCreateModal.value = false
+    Object.assign(newUnit, {
+      name: '',
+      category: '',
+      interview_address: '',
+      director_full_name: '',
+      director_email: '',
+      director_phone: '',
+      cluster_director_full_name: '',
+      cluster_director_email: '',
+    })
+    toast.success('Подразделение успешно создано')
+  } catch (err: unknown) {
+    toast.error('Не удалось создать подразделение')
+    console.error(err)
+  }
 }
 </script>
 

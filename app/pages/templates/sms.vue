@@ -9,9 +9,20 @@
         Plus(:size="18")
       | Добавить шаблон
       
-  .page-vacancies__loading(v-if="templatesStore.isLoading && !templatesStore.templates.length")
-    .page-candidates__spinner
-    | Загрузка...
+  .page-templates__list(v-if="templatesStore.isLoading && !templatesStore.templates.length", aria-hidden="true")
+    .template-card(v-for="i in 3", :key="i", style="pointer-events: none;")
+      .template-card__header
+        .template-card__title-row(style="display: flex; gap: 12px; width: 60%;")
+          UiSkeleton(width="180px", height="20px")
+          UiSkeleton(width="90px", height="18px")
+        .template-card__actions(style="display: flex; gap: 8px;")
+          UiSkeleton(width="100px", height="30px")
+          UiSkeleton(width="80px", height="30px")
+          UiSkeleton(width="30px", height="30px")
+      .template-card__tags(style="display: flex; gap: 6px; margin: 12px 0;")
+        UiSkeleton(width="70px", height="18px")
+        UiSkeleton(width="70px", height="18px")
+      UiSkeleton(width="100%", height="40px")
     
   .page-vacancies__empty(v-else-if="templatesStore.templates.length === 0")
     Mail(:size="48")
@@ -113,6 +124,9 @@
 import { ref, reactive, computed, nextTick, onMounted } from 'vue'
 import { Mail, Edit, Copy, Plus, Trash2, Eye } from 'lucide-vue-next'
 import { useTemplatesStore } from '~/stores/templates.store'
+import { useToast } from '~/composables/useToast'
+import { useConfirm } from '~/composables/useConfirm'
+import UiSkeleton from '~/components/ui/UiSkeleton/UiSkeleton.vue'
 import { RECIPIENT_LABELS } from '~/types/template.types'
 import type { Template, TemplateRecipient } from '~/types/template.types'
 import {
@@ -122,6 +136,8 @@ import {
 } from '~/utils/template'
 
 const templatesStore = useTemplatesStore()
+const toast = useToast()
+const confirm = useConfirm()
 const showModal = ref(false)
 const isEditing = ref(false)
 const editingId = ref<string | null>(null)
@@ -236,6 +252,7 @@ const saveTemplate = async () => {
         body: formData.body.trim(),
         recipient: formData.recipient,
       })
+      toast.success('Шаблон SMS успешно обновлен')
     } else {
       await templatesStore.create({
         type: 'sms',
@@ -243,22 +260,45 @@ const saveTemplate = async () => {
         body: formData.body.trim(),
         recipient: formData.recipient,
       })
+      toast.success('Шаблон SMS успешно создан')
     }
     showModal.value = false
+  } catch (err: unknown) {
+    toast.error('Не удалось сохранить шаблон')
+    console.error(err)
   } finally {
     isSubmitting.value = false
   }
 }
 
 const handleDelete = async (id: string) => {
-  if (confirm('Вы действительно хотите удалить этот шаблон?')) {
-    await templatesStore.deleteTemplate(id)
+  const confirmed = await confirm.confirm({
+    title: 'Удаление шаблона',
+    message: 'Вы уверены, что хотите удалить этот SMS-шаблон? Это действие нельзя отменить.',
+    confirmText: 'Удалить шаблон',
+    cancelText: 'Отмена',
+    variant: 'danger',
+    icon: 'trash',
+  })
+  if (!confirmed) return
+
+  try {
+    const success = await templatesStore.deleteTemplate(id)
+    if (success) {
+      toast.success('Шаблон успешно удален')
+    } else {
+      toast.error('Не удалось удалить шаблон')
+    }
+  } catch (err: unknown) {
+    toast.error('Ошибка при удалении шаблона')
+    console.error(err)
   }
 }
 
 const copyText = async (text: string) => {
   try {
     await navigator.clipboard.writeText(text)
+    toast.info('Текст скопирован в буфер обмена')
   } catch { /* ignored */ }
 }
 </script>

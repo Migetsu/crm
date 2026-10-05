@@ -35,9 +35,20 @@
       )
 
   //- Loading & Empty states
-  .page-vacancies__loading(v-if="usersStore.isLoading && !usersStore.users.length")
-    .page-candidates__spinner
-    | Загрузка пользователей...
+  .page-users__list(v-if="usersStore.isLoading && !usersStore.users.length", aria-hidden="true")
+    .user-card(v-for="i in 4", :key="i", style="pointer-events: none;")
+      .user-card__left(style="width: 100%; display: flex; align-items: center; gap: 16px;")
+        UiSkeleton(width="48px", height="48px", border-radius="50%", variant="circle")
+        .user-card__info(style="display: flex; flex-direction: column; gap: 8px; flex: 1;")
+          .user-card__title-row(style="display: flex; gap: 12px;")
+            UiSkeleton(width="200px", height="18px")
+            UiSkeleton(width="90px", height="18px", border-radius="12px")
+          .user-card__meta(style="display: flex; gap: 16px;")
+            UiSkeleton(width="140px", height="14px")
+            UiSkeleton(width="110px", height="14px")
+      .user-card__actions(style="display: flex; gap: 8px;")
+        UiSkeleton(width="110px", height="32px", border-radius="6px")
+        UiSkeleton(width="120px", height="32px", border-radius="6px")
 
   .page-vacancies__empty(v-else-if="filteredUsers.length === 0")
     UsersIcon(:size="48")
@@ -201,11 +212,14 @@ import { format, parseISO } from 'date-fns'
 import { ru } from 'date-fns/locale'
 import { useUsersStore } from '~/stores/users.store'
 import { useAuthStore } from '~/stores/auth.store'
+import { useToast } from '~/composables/useToast'
+import UiSkeleton from '~/components/ui/UiSkeleton/UiSkeleton.vue'
 import { ROLE_LABELS, canManageAccounts, canModifyUser } from '~/types/user.types'
 import type { UserRole, Profile } from '~/types/user.types'
 
 const usersStore = useUsersStore()
 const authStore = useAuthStore()
+const toast = useToast()
 
 const searchQuery = ref('')
 const selectedRoleFilter = ref('all')
@@ -351,8 +365,9 @@ const handleCreateUser = async () => {
       role: newUser.role,
     })
     showCreateModal.value = false
+    toast.success('Пользователь успешно создан')
   } catch (err: unknown) {
-    alert(err instanceof Error ? err.message : 'Ошибка при создании пользователя')
+    toast.error(err instanceof Error ? err.message : 'Ошибка при создании пользователя')
   } finally {
     isSubmitting.value = false
   }
@@ -370,8 +385,9 @@ const handleSaveRole = async () => {
   try {
     await usersStore.updateRole(selectedUser.value.id, targetRole.value)
     showRoleModal.value = false
+    toast.success('Роль пользователя успешно изменена')
   } catch (err: unknown) {
-    alert(err instanceof Error ? err.message : 'Ошибка при смене роли')
+    toast.error(err instanceof Error ? err.message : 'Ошибка при смене роли')
   } finally {
     isSubmitting.value = false
   }
@@ -389,8 +405,9 @@ const confirmToggleActive = async () => {
   try {
     await usersStore.toggleActive(toggleTargetUser.value.id, willBeActive)
     showToggleModal.value = false
+    toast.success(willBeActive ? 'Пользователь успешно разблокирован' : 'Пользователь успешно заблокирован')
   } catch (err: unknown) {
-    alert(err instanceof Error ? err.message : `Ошибка при изменении статуса`)
+    toast.error(err instanceof Error ? err.message : 'Ошибка при изменении статуса')
   } finally {
     isSubmitting.value = false
   }

@@ -47,17 +47,30 @@ export const sendEmailMessage = async (options: SendEmailOptions): Promise<Email
       const port = Number(config.smtpPort) || 465
       const isSecure = config.smtpSecure !== 'false' && port === 465
 
-      const transporter = nodemailer.createTransport({
-        host: String(config.smtpHost),
-        port,
-        secure: isSecure,
-        auth: {
-          user: String(config.smtpUser),
-          pass: String(config.smtpPass),
-        },
-        connectionTimeout: 10000,
-        greetingTimeout: 10000,
-      })
+      const isGmail = String(config.smtpHost).toLowerCase().includes('gmail')
+      const cleanPass = String(config.smtpPass).replace(/\s+/g, '')
+
+      const transporter = nodemailer.createTransport(
+        isGmail
+          ? {
+              service: 'gmail',
+              auth: {
+                user: String(config.smtpUser),
+                pass: cleanPass,
+              },
+            }
+          : {
+              host: String(config.smtpHost),
+              port,
+              secure: isSecure,
+              auth: {
+                user: String(config.smtpUser),
+                pass: cleanPass,
+              },
+              connectionTimeout: 10000,
+              greetingTimeout: 10000,
+            }
+      )
 
       const senderFrom = options.from || status.from || 'noreply@crm.local'
 
